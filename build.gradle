@@ -1,0 +1,73 @@
+plugins {
+	id 'java'
+	id 'org.springframework.boot' version '3.5.7'
+	id 'io.spring.dependency-management' version '1.1.7'
+}
+
+group = 'com.example'
+version = '0.0.1-SNAPSHOT'
+description = 'Make a Board App'
+
+java {
+	toolchain {
+		languageVersion = JavaLanguageVersion.of(17)
+	}
+}
+
+configurations {
+	compileOnly {
+		extendsFrom annotationProcessor
+	}
+}
+
+repositories {
+	mavenCentral()
+}
+
+dependencies {
+	/* --- Web + MVC --- */
+	implementation 'org.springframework.boot:spring-boot-starter-web'
+	// Spring MVC + 내장 Tomcat + JSON 처리 기능 제공
+
+	/* --- View Template (HTML 렌더링) --- */
+	implementation 'org.springframework.boot:spring-boot-starter-thymeleaf'
+	// Controller → View(.html) 연동 템플릿 엔진
+
+	/* --- Validation (입력값 검증) --- */
+	implementation 'org.springframework.boot:spring-boot-starter-validation'
+	// @NotNull, @Email 등 request 검증을 위해 사용
+
+	/* --- Security (로그인/인증/권한 처리) --- */
+	implementation 'org.springframework.boot:spring-boot-starter-security'
+	// 로그인 / 인증 세션 / 접근 권한 관리 기능 제공
+
+	/* --- Thymeleaf + Security 연동 --- */
+	implementation 'org.thymeleaf.extras:thymeleaf-extras-springsecurity6'
+	// Thymeleaf에서 sec:authorize 같은 security 태그 사용 가능
+
+	/* --- Oracle JDBC Driver (DB 연결) --- */
+	runtimeOnly 'com.oracle.database.jdbc:ojdbc11'
+	// Oracle과 Spring Boot를 연결하기 위한 JDBC 드라이버
+
+	/* --- Lombok (Getter/Setter/Constructor 자동 생성) --- */
+	compileOnly 'org.projectlombok:lombok'
+	annotationProcessor 'org.projectlombok:lombok'
+
+	/* --- JWT API (필수) --- */
+	implementation 'io.jsonwebtoken:jjwt-api:0.11.5'
+
+	/* --- JWT 구현체 (필수) - 런타임에 로드됨 --- */
+	runtimeOnly 'io.jsonwebtoken:jjwt-impl:0.11.5'
+
+	/* --- JWT에서 JSON 처리를 위해 Jackson 사용 (필수) --- */
+	runtimeOnly 'io.jsonwebtoken:jjwt-jackson:0.11.5' // 또는 gson 가능
+
+	/* --- Test 관련 --- */
+	testImplementation 'org.springframework.boot:spring-boot-starter-test'
+	testImplementation 'org.springframework.security:spring-security-test'
+	testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
+}
+
+tasks.named('test') {
+	useJUnitPlatform()
+}

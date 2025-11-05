@@ -1,0 +1,19 @@
+spring:
+  datasource:
+    driver-class-name: oracle.jdbc.driver.OracleDriver
+    url: jdbc:oracle:thin:@localhost:1521:xe
+    username: boardapp
+    password: 1234
+
+# JPA 완전히 비활성화
+spring.jpa.hibernate.ddl-auto: none
+spring.jpa.open-in-view: false
+
+# JWT 설정에 필요한 값 등록
+jwt:
+  secret: "CHANGE_THIS_SECRET_TO_LONG_RANDOM_KEY"
+  expiration: 3600000   # 1시간 (1000ms * 60 * 60)
+
+# 서버 포트 설정 http://localhost:8080
+server:
+  port: 8080
