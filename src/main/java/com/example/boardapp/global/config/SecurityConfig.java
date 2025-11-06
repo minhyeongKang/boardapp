@@ -22,7 +22,7 @@ public class SecurityConfig {
                 .formLogin(form -> form.disable()) // 기본 로그인 폼 사용 안 함
                 .httpBasic(basic -> basic.disable()) // Basic Auth 사용 안 함
                 .authorizeHttpRequests(auth -> auth
-                        .requestMatchers("/users/login", "/users/signup").permitAll()
+                        .requestMatchers("/api/users/login", "/api/users/signup").permitAll()
                         .anyRequest().authenticated()
                 )
                 .addFilterBefore(jwtAuthenticationFilter,
