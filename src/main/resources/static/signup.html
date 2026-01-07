@@ -1,0 +1,69 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>BoardApp • 회원가입</title>
+  <link rel="stylesheet" href="/css/styles.css" />
+</head>
+<body class="auth-body">
+<div class="auth-container">
+  <div class="auth-card">
+    <h1 class="logo">BoardApp</h1>
+    <p class="auth-subtitle">게시판 서비스를 시작하세요</p>
+
+    <input id="su_email" class="auth-input" type="email" placeholder="이메일 주소" />
+    <input id="su_username" class="auth-input" placeholder="사용자 이름" />
+    <input id="su_nickname" class="auth-input" placeholder="닉네임" />
+    <input id="su_password" class="auth-input" type="password" placeholder="비밀번호" />
+    <textarea id="su_intro" class="auth-input auth-textarea" placeholder="소개글"></textarea>
+
+    <button class="auth-button" type="button" onclick="signup()">
+      가입
+    </button>
+
+    <p id="su_result" class="auth-message"></p>
+  </div>
+
+  <div class="auth-card auth-card-secondary">
+      <span>
+        계정이 있으신가요?
+        <a href="/" class="auth-link">로그인</a>
+      </span>
+  </div>
+</div>
+
+<script>
+  async function signup() {
+    const payload = {
+      username: su_username.value.trim(),
+      password: su_password.value,
+      nickname: su_nickname.value.trim(),
+      email: su_email.value.trim(),
+      intro: su_intro.value.trim()
+    };
+
+    const el = document.getElementById("su_result");
+    el.textContent = "";
+
+    try {
+      const res = await fetch("/api/users/signup", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload)
+      });
+
+      if (!res.ok) {
+        el.textContent = "회원가입에 실패했습니다.";
+        return;
+      }
+
+      el.textContent = "회원가입 완료";
+      setTimeout(() => location.href = "/", 500);
+    } catch {
+      el.textContent = "서버와 통신할 수 없습니다.";
+    }
+  }
+</script>
+</body>
+</html>
