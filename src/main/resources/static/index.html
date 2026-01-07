@@ -1,0 +1,81 @@
+<!doctype html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>BoardApp • 로그인</title>
+    <link rel="stylesheet" href="/css/styles.css" />
+</head>
+<body class="auth-body">
+<div class="auth-container">
+    <div class="auth-card">
+        <h1 class="logo">BoardApp</h1>
+
+        <input
+                id="li_email"
+                type="email"
+                class="auth-input"
+                placeholder="이메일 주소"
+        />
+
+        <input
+                id="li_password"
+                type="password"
+                class="auth-input"
+                placeholder="비밀번호"
+        />
+
+        <button class="auth-button" type="button" onclick="login()">
+            로그인
+        </button>
+
+        <p id="li_result" class="auth-message"></p>
+    </div>
+
+    <div class="auth-card auth-card-secondary">
+      <span>
+        계정이 없으신가요?
+        <a href="/signup.html" class="auth-link">회원가입</a>
+      </span>
+    </div>
+</div>
+
+<script>
+    const TOKEN_KEY = "boardapp_token";
+
+    function setToken(token) {
+      localStorage.setItem(TOKEN_KEY, token);
+    }
+
+    async function login() {
+      const payload = {
+        email: document.getElementById("li_email").value.trim(),
+        password: document.getElementById("li_password").value
+      };
+
+      const el = document.getElementById("li_result");
+      el.textContent = "";
+
+      try {
+        const res = await fetch("/api/users/login", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload)
+        });
+
+        const data = await res.json().catch(() => null);
+
+        if (!res.ok || !data || !data.token) {
+          el.textContent = "이메일 또는 비밀번호가 올바르지 않습니다.";
+          return;
+        }
+
+        setToken(data.token);
+        location.href = "/main.html";
+      } catch (e) {
+        el.textContent = "서버와 통신할 수 없습니다.";
+      }
+    }
+</script>
+</body>
+</html>

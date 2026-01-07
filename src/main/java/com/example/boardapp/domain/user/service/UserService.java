@@ -16,26 +16,25 @@ public class UserService {
     private final BCryptPasswordEncoder passwordEncoder = new BCryptPasswordEncoder();
 
     public void signup(User user) {
-        // 기존 회원 여부 확인
         userRepository.findByUsername(user.getUsername())
                 .ifPresent(u -> { throw new RuntimeException("이미 존재하는 사용자명입니다."); });
 
-        // 비밀번호 암호화
-        user.setPassword(passwordEncoder.encode(user.getPassword()));
+        userRepository.findByEmail(user.getEmail())
+                .ifPresent(u -> { throw new RuntimeException("이미 존재하는 이메일입니다."); });
 
+        user.setPassword(passwordEncoder.encode(user.getPassword()));
         userRepository.save(user);
     }
 
-    public String login(String username, String password) {
-        User user = userRepository.findByUsername(username)
+    public String login(String email, String password) {
+        User user = userRepository.findByEmail(email)
                 .orElseThrow(() -> new RuntimeException("해당 사용자를 찾을 수 없습니다."));
 
         if (!passwordEncoder.matches(password, user.getPassword())) {
             throw new RuntimeException("비밀번호가 일치하지 않습니다.");
         }
 
-        // ✅ JWT 토큰 발급
-        return jwtUtil.generateToken(username);
+        return jwtUtil.generateToken(email);
     }
 
     public void logout() {

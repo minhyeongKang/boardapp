@@ -23,7 +23,7 @@ public class UserController {
 
     @PostMapping("/login")
     public ResponseEntity<Map<String, String>> login(@RequestBody Map<String, String> request) {
-        String token = userService.login(request.get("username"), request.get("password"));
+        String token = userService.login(request.get("email"), request.get("password"));
         return ResponseEntity.ok(Map.of("token", token));
     }
 
