@@ -1,0 +1,35 @@
+package com.example.boardapp.domain.user.controller;
+
+import com.example.boardapp.domain.user.entity.User;
+import com.example.boardapp.domain.user.service.UserService;
+import lombok.RequiredArgsConstructor;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.*;
+
+import java.util.Map;
+
+@RestController
+@RequiredArgsConstructor
+@RequestMapping("/api/users")
+public class UserController {
+
+    private final UserService userService;
+
+    @PostMapping("/signup")
+    public ResponseEntity<String> signup(@RequestBody User user) {
+        userService.signup(user);
+        return ResponseEntity.ok("회원가입 성공");
+    }
+
+    @PostMapping("/login")
+    public ResponseEntity<Map<String, String>> login(@RequestBody Map<String, String> request) {
+        String token = userService.login(request.get("username"), request.get("password"));
+        return ResponseEntity.ok(Map.of("token", token));
+    }
+
+    @PostMapping("/logout")
+    public ResponseEntity<String> logout() {
+        userService.logout();
+        return ResponseEntity.ok("로그아웃 성공 (클라이언트 토큰 삭제 필요)");
+    }
+}

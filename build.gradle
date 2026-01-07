@@ -62,6 +62,9 @@ dependencies {
 	/* --- JWT에서 JSON 처리를 위해 Jackson 사용 (필수) --- */
 	runtimeOnly 'io.jsonwebtoken:jjwt-jackson:0.11.5' // 또는 gson 가능
 
+	implementation 'org.springframework.boot:spring-boot-starter-jdbc'
+
+
 	/* --- Test 관련 --- */
 	testImplementation 'org.springframework.boot:spring-boot-starter-test'
 	testImplementation 'org.springframework.security:spring-security-test'
