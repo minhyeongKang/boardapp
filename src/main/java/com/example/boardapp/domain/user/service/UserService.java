@@ -41,4 +41,18 @@ public class UserService {
         // JWT는 상태가 없기 때문에 서버가 따로 처리할 것은 없음.
         // 클라이언트가 token 삭제하면 로그아웃.
     }
+
+    public User getMyInfo(String email) {
+        User user = userRepository.findByEmail(email)
+                .orElseThrow(() -> new RuntimeException("사용자를 찾을 수 없습니다."));
+        user.setPassword(null); // 응답에 비밀번호 노출 방지
+        return user;
+    }
+
+    public void updateMyProfile(String email, String nickname, String intro) {
+        int updated = userRepository.updateProfileByEmail(email, nickname, intro);
+        if (updated == 0) {
+            throw new RuntimeException("수정할 사용자를 찾을 수 없습니다.");
+        }
+    }
 }

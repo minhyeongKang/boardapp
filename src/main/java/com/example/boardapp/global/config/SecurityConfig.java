@@ -24,7 +24,7 @@ public class SecurityConfig {
                 .authorizeHttpRequests(auth -> auth
                         // 정적 리소스 및 루트 페이지 허용
                         .requestMatchers(
-                                "/", "/index.html", "/signup.html", "/main.html",
+                                "/", "/index.html", "/signup.html", "/main.html", "/mypage.html",
                                 "/css/**", "/js/**", "/images/**", "/favicon.ico",
 
                                 // 인증 없이 허용할 API
