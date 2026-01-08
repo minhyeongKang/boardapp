@@ -3,198 +3,100 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>BoardApp • Main</title>
-  <link rel="stylesheet" href="/css/styles.css" />
+  <title>BoardApp - Main</title>
+  <link rel="stylesheet" href="/css/app.css" />
 </head>
-<body class="app-body">
+<body>
 <header class="topbar">
   <div class="topbar-inner">
     <div class="brand">BoardApp</div>
-    <div class="topbar-actions">
-      <button class="iconbtn" type="button" title="새 글">
-        <span class="icon">＋</span>
-      </button>
-      <button class="iconbtn" type="button" onclick="logout()" title="로그아웃">
-        <span class="icon">↩</span>
-      </button>
-      <button class="iconbtn" type="button" onclick="location.href='/mypage.html'" title="마이페이지">
-        <span class="icon">☺</span>
-      </button>
+    <div class="actions">
+      <button class="icon-btn" id="btnWrite" type="button" title="글쓰기">+</button>
+      <button class="icon-btn" id="btnMy" type="button" title="마이페이지">👤</button>
+      <button class="icon-btn" id="btnLogout" type="button" title="로그아웃">↩</button>
     </div>
   </div>
 </header>
 
-<main class="layout">
-  <section class="feed" id="feed"></section>
-
-  <aside class="sidebar">
-    <div class="side-card">
-      <div class="me">
-        <div class="avatar"></div>
-        <div class="me-info">
-          <div class="me-name" id="meName">사용자</div>
-          <div class="me-sub">환영합니다</div>
-        </div>
-      </div>
+<main class="container">
+  <div class="panel">
+    <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:12px;">
+      <div class="page-title">전체 게시글</div>
+      <button class="pill-btn" id="btnRefresh" type="button">새로고침</button>
     </div>
 
-    <div class="side-card">
-      <div class="side-title">추천</div>
-      <div class="suggest">
-        <div class="suggest-row">
-          <div class="avatar small"></div>
-          <div class="suggest-info">
-            <div class="suggest-name">sample_user</div>
-            <div class="suggest-sub">회원님을 위한 추천</div>
-          </div>
-          <button class="textbtn" type="button">팔로우</button>
-        </div>
-
-        <div class="suggest-row">
-          <div class="avatar small"></div>
-          <div class="suggest-info">
-            <div class="suggest-name">boardapp</div>
-            <div class="suggest-sub">인기 계정</div>
-          </div>
-          <button class="textbtn" type="button">팔로우</button>
-        </div>
-      </div>
-    </div>
-
-    <div class="footer-muted">
-      © BoardApp
-    </div>
-  </aside>
+    <div id="feed" class="grid"></div>
+    <div id="empty" class="empty" style="display:none;">아직 게시글이 없습니다. + 버튼으로 첫 글을 작성해보세요.</div>
+  </div>
 </main>
 
+<script src="/js/auth.js"></script>
 <script>
-  const TOKEN_KEY = "boardapp_token";
+  if (!requireAuth()) {
+    // 토큰 없으면 이미 index.html로 보내니까 여기서 종료
+  } else {
+    document.getElementById("btnWrite").onclick = () => location.href = "/write.html";
+    document.getElementById("btnMy").onclick = () => location.href = "/mypage.html";
+    document.getElementById("btnLogout").onclick = () => logout();
+    document.getElementById("btnRefresh").onclick = () => loadFeed();
 
-  function getToken() {
-    return localStorage.getItem(TOKEN_KEY);
-  }
-
-  function clearToken() {
-    localStorage.removeItem(TOKEN_KEY);
-  }
-
-  function parseJwt(token) {
-    try {
-      return JSON.parse(atob(token.split(".")[1]));
-    } catch {
-      return null;
+    function fmtDate(s){
+      if(!s) return "";
+      return String(s).replace("T"," ");
     }
-  }
 
-  function ensureAuth() {
-    const token = getToken();
-    if (!token) {
-      location.href = "/";
-      return null;
+    function escapeHtml(str){
+      return (str ?? "")
+        .replaceAll("&","&amp;")
+        .replaceAll("<","&lt;")
+        .replaceAll(">","&gt;")
+        .replaceAll('"',"&quot;")
+        .replaceAll("'","&#039;");
     }
-    return token;
-  }
 
-  function logout() {
-    clearToken();
-    location.href = "/";
-  }
-
-  function renderMe(token) {
-    const payload = parseJwt(token);
-    const name = payload?.sub || "사용자";
-    document.getElementById("meName").textContent = name;
-  }
-
-  function buildPost({ user, time, content, likes, comments }) {
-    return `
-      <article class="post">
-        <div class="post-header">
-          <div class="avatar"></div>
-          <div class="post-meta">
-            <div class="post-user">${escapeHtml(user)}</div>
-            <div class="post-time">${escapeHtml(time)}</div>
+    function cardHtml(p){
+      const name = p.authorNickname || p.nickname || p.username || "USER";
+      return `
+        <article class="card">
+          <div class="card-header">
+            <div class="avatar"></div>
+            <div class="meta">
+              <div class="name">${escapeHtml(name)}</div>
+              <div class="date">${escapeHtml(fmtDate(p.createdAt))}</div>
+            </div>
           </div>
-          <button class="iconbtn ghost" type="button" title="더보기">
-            <span class="icon">⋯</span>
-          </button>
-        </div>
-
-        <div class="post-media">
-          <div class="media-placeholder"></div>
-        </div>
-
-        <div class="post-actions">
-          <button class="iconbtn" type="button" title="좋아요"><span class="icon">♥</span></button>
-          <button class="iconbtn" type="button" title="댓글"><span class="icon">💬</span></button>
-          <button class="iconbtn" type="button" title="공유"><span class="icon">↗</span></button>
-          <div class="spacer"></div>
-          <button class="iconbtn" type="button" title="저장"><span class="icon">⛶</span></button>
-        </div>
-
-        <div class="post-body">
-          <div class="post-stats">
-            좋아요 <b>${likes}</b>개 · 댓글 <b>${comments}</b>개
+          <div class="card-body">
+            <p class="title">${escapeHtml(p.title || "")}</p>
+            <p class="content">${escapeHtml(p.content || "")}</p>
           </div>
-          <div class="post-content">
-            <b>${escapeHtml(user)}</b>
-            <span>${escapeHtml(content)}</span>
+          <div class="card-footer">
+            <span>좋아요</span>
+            <span>댓글</span>
           </div>
-        </div>
+        </article>
+      `;
+    }
 
-        <div class="post-commentbox">
-          <input class="comment-input" placeholder="댓글 달기..." />
-          <button class="textbtn" type="button">게시</button>
-        </div>
-      </article>
-    `;
-  }
+    async function loadFeed(){
+      const feedEl = document.getElementById("feed");
+      const emptyEl = document.getElementById("empty");
+      feedEl.innerHTML = "";
 
-  function escapeHtml(str) {
-    return String(str)
-      .replaceAll("&", "&amp;")
-      .replaceAll("<", "&lt;")
-      .replaceAll(">", "&gt;")
-      .replaceAll('"', "&quot;")
-      .replaceAll("'", "&#039;");
-  }
+      const res = await apiFetch("/api/boards");
+      if(!res) return; // ✅ null 체크
 
-  function renderFeed() {
-    const sample = [
-      {
-        user: "boardapp",
-        time: "방금",
-        content: "메인 피드 UI 샘플입니다. 게시글 API를 붙이면 실제 데이터로 렌더링할 수 있어요.",
-        likes: 128,
-        comments: 14
-      },
-      {
-        user: "sample_user",
-        time: "2시간 전",
-        content: "이미지 영역은 추후 실제 게시글 이미지로 교체하면 됩니다.",
-        likes: 42,
-        comments: 3
-      },
-      {
-        user: "dev_note",
-        time: "어제",
-        content: "게시판 API가 준비되면 /api/posts 같은 엔드포인트를 호출해서 피드를 채우게 됩니다.",
-        likes: 9,
-        comments: 1
+      const list = await res.json();
+
+      if(!list || list.length === 0){
+        emptyEl.style.display = "block";
+        return;
       }
-    ];
+      emptyEl.style.display = "none";
+      feedEl.innerHTML = list.map(cardHtml).join("");
+    }
 
-    const feed = document.getElementById("feed");
-    feed.innerHTML = sample.map(buildPost).join("");
+    loadFeed();
   }
-
-  (function init() {
-    const token = ensureAuth();
-    if (!token) return;
-
-    renderMe(token);
-    renderFeed();
-  })();
 </script>
 </body>
 </html>
