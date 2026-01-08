@@ -1,12 +1,14 @@
 package com.example.boardapp.domain.user.controller;
 
+import com.example.boardapp.domain.user.dto.LoginRequestDto;
+import com.example.boardapp.domain.user.dto.UserMeResponseDto;
 import com.example.boardapp.domain.user.entity.User;
 import com.example.boardapp.domain.user.service.UserService;
+import com.example.boardapp.global.security.UserDetailsImpl;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
-import org.springframework.security.core.Authentication;
-import org.springframework.security.core.context.SecurityContextHolder;
 
 import java.util.Map;
 
@@ -23,9 +25,10 @@ public class UserController {
         return ResponseEntity.ok("회원가입 성공");
     }
 
+    // Map 말고 이미 만든 LoginRequestDto 사용(기능 유지 + 안전)
     @PostMapping("/login")
-    public ResponseEntity<Map<String, String>> login(@RequestBody Map<String, String> request) {
-        String token = userService.login(request.get("email"), request.get("password"));
+    public ResponseEntity<Map<String, String>> login(@RequestBody LoginRequestDto request) {
+        String token = userService.login(request.getEmail(), request.getPassword());
         return ResponseEntity.ok(Map.of("token", token));
     }
 
@@ -35,22 +38,23 @@ public class UserController {
         return ResponseEntity.ok("로그아웃 성공 (클라이언트 토큰 삭제 필요)");
     }
 
-    @GetMapping("/me")
-    public ResponseEntity<User> me() {
-        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
-        String email = (String) auth.getPrincipal();
-        return ResponseEntity.ok(userService.getMyInfo(email));
-    }
-
+    // SecurityContext에서 String 캐스팅하지 말고 principal(UserDetailsImpl)에서 꺼내기
     @PutMapping("/me")
-    public ResponseEntity<String> updateMe(@RequestBody Map<String, String> request) {
-        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
-        String email = (String) auth.getPrincipal();
+    public ResponseEntity<String> updateMe(
+            @AuthenticationPrincipal UserDetailsImpl userDetails,
+            @RequestBody Map<String, String> request
+    ) {
+        String email = userDetails.getUser().getEmail();
 
         String nickname = request.getOrDefault("nickname", "");
         String intro = request.getOrDefault("intro", "");
 
         userService.updateMyProfile(email, nickname, intro);
         return ResponseEntity.ok("수정 완료");
+    }
+
+    @GetMapping("/me")
+    public ResponseEntity<UserMeResponseDto> me(@AuthenticationPrincipal UserDetailsImpl userDetails) {
+        return ResponseEntity.ok(UserMeResponseDto.from(userDetails.getUser()));
     }
 }

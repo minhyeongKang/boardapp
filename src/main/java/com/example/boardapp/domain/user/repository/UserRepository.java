@@ -68,4 +68,23 @@ public class UserRepository {
     """;
         return jdbc.update(sql, nickname, intro, email);
     }
+
+    public Optional<User> findById(Long id) {
+        String sql = "SELECT * FROM users WHERE id = ?";
+        return jdbc.query(sql, rs -> {
+            if (rs.next()) {
+                User user = new User();
+                user.setId(rs.getLong("ID"));
+                user.setUsername(rs.getString("USERNAME"));
+                user.setPassword(rs.getString("PASSWORD"));
+                user.setNickname(rs.getString("NICKNAME"));
+                user.setEmail(rs.getString("EMAIL"));
+                user.setIntro(rs.getString("INTRO"));
+                user.setCreatedAt(rs.getTimestamp("CREATEDAT").toLocalDateTime());
+                user.setModifiedAt(rs.getTimestamp("MODIFIEDAT").toLocalDateTime());
+                return Optional.of(user);
+            }
+            return Optional.empty();
+        }, id);
+    }
 }
