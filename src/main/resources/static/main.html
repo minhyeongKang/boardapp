@@ -26,77 +26,101 @@
     </div>
 
     <div id="feed" class="grid"></div>
-    <div id="empty" class="empty" style="display:none;">아직 게시글이 없습니다. + 버튼으로 첫 글을 작성해보세요.</div>
+    <div id="empty" class="empty" style="display:none;">
+      아직 게시글이 없습니다. + 버튼으로 첫 글을 작성해보세요.
+    </div>
   </div>
 </main>
 
 <script src="/js/auth.js"></script>
 <script>
-  if (!requireAuth()) {
-    // 토큰 없으면 이미 index.html로 보내니까 여기서 종료
-  } else {
-    document.getElementById("btnWrite").onclick = () => location.href = "/write.html";
-    document.getElementById("btnMy").onclick = () => location.href = "/mypage.html";
-    document.getElementById("btnLogout").onclick = () => logout();
-    document.getElementById("btnRefresh").onclick = () => loadFeed();
+  requireAuth();
 
-    function fmtDate(s){
-      if(!s) return "";
-      return String(s).replace("T"," ");
-    }
+  document.getElementById("btnWrite").onclick = () => location.href = "/write.html";
+  document.getElementById("btnMy").onclick = () => location.href = "/mypage.html";
+  document.getElementById("btnLogout").onclick = logout;
+  document.getElementById("btnRefresh").onclick = loadFeed;
 
-    function escapeHtml(str){
-      return (str ?? "")
-        .replaceAll("&","&amp;")
-        .replaceAll("<","&lt;")
-        .replaceAll(">","&gt;")
-        .replaceAll('"',"&quot;")
-        .replaceAll("'","&#039;");
-    }
+  let MY_USER_ID = null;
 
-    function cardHtml(p){
-      const name = p.authorNickname || p.nickname || p.username || "USER";
-      return `
-        <article class="card">
-          <div class="card-header">
-            <div class="avatar"></div>
-            <div class="meta">
-              <div class="name">${escapeHtml(name)}</div>
-              <div class="date">${escapeHtml(fmtDate(p.createdAt))}</div>
-            </div>
-          </div>
-          <div class="card-body">
-            <p class="title">${escapeHtml(p.title || "")}</p>
-            <p class="content">${escapeHtml(p.content || "")}</p>
-          </div>
-          <div class="card-footer">
-            <span>좋아요</span>
-            <span>댓글</span>
-          </div>
-        </article>
-      `;
-    }
-
-    async function loadFeed(){
-      const feedEl = document.getElementById("feed");
-      const emptyEl = document.getElementById("empty");
-      feedEl.innerHTML = "";
-
-      const res = await apiFetch("/api/boards");
-      if(!res) return; // ✅ null 체크
-
-      const list = await res.json();
-
-      if(!list || list.length === 0){
-        emptyEl.style.display = "block";
-        return;
-      }
-      emptyEl.style.display = "none";
-      feedEl.innerHTML = list.map(cardHtml).join("");
-    }
-
-    loadFeed();
+  function fmtDate(s){
+    if(!s) return "";
+    return String(s).replace("T"," ");
   }
+
+  function escapeHtml(str){
+    return (str ?? "")
+      .replaceAll("&","&amp;")
+      .replaceAll("<","&lt;")
+      .replaceAll(">","&gt;")
+      .replaceAll('"',"&quot;")
+      .replaceAll("'","&#039;");
+  }
+
+  async function loadMyContext(){
+    const res = await apiFetch("/api/users/me");
+    if(!res) return;
+    const me = await res.json();
+    MY_USER_ID = me.id ?? null;
+  }
+
+  // userId 기반 링크 + 내 자신 클릭 시 mypage
+  function cardHtml(p){
+    const nickname = p.nickname || p.username || "USER";
+    const userId = p.userId;
+
+    const url = (MY_USER_ID && userId === MY_USER_ID)
+      ? "/mypage.html"
+      : "/user.html?userId=" + encodeURIComponent(userId);
+
+    return `
+      <article class="card">
+        <div class="card-header">
+          <div class="avatar"></div>
+          <div class="meta">
+            <div class="name">
+              <a href="${url}" class="user-link" style="color:inherit; text-decoration:none; font-weight:800;">
+                ${escapeHtml(nickname)}
+              </a>
+            </div>
+            <div class="date">${escapeHtml(fmtDate(p.createdAt))}</div>
+          </div>
+        </div>
+        <div class="card-body">
+          <p class="title">${escapeHtml(p.title || "")}</p>
+          <p class="content">${escapeHtml(p.content || "")}</p>
+        </div>
+        <div class="card-footer">
+          <span>좋아요</span>
+          <span>댓글</span>
+        </div>
+      </article>
+    `;
+  }
+
+  async function loadFeed(){
+    const feedEl = document.getElementById("feed");
+    const emptyEl = document.getElementById("empty");
+    feedEl.innerHTML = "";
+
+    const res = await apiFetch("/api/boards");
+    if(!res) return;
+
+    const list = await res.json();
+
+    if(!list || list.length === 0){
+      emptyEl.style.display = "block";
+      return;
+    }
+
+    emptyEl.style.display = "none";
+    feedEl.innerHTML = list.map(cardHtml).join("");
+  }
+
+  (async () => {
+    await loadMyContext();
+    await loadFeed();
+  })();
 </script>
 </body>
 </html>

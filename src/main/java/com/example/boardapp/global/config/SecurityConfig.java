@@ -41,7 +41,7 @@ public class SecurityConfig {
 
                         // ✅ 정적 리소스/페이지 허용
                         .requestMatchers(
-                                "/", "/index.html", "/signup.html", "/main.html", "/mypage.html", "/write.html",
+                                "/", "/index.html", "/signup.html", "/main.html", "/mypage.html", "/write.html", "/user.html",
                                 "/css/**", "/js/**", "/images/**", "/favicon.ico", "/error"
                         ).permitAll()
 

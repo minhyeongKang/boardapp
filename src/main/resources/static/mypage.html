@@ -11,8 +11,8 @@
   <div class="topbar-inner">
     <div class="brand">BoardApp</div>
     <div class="actions">
-      <button class="pill-btn" id="btnMain">메인</button>
-      <button class="pill-btn" id="btnLogout">로그아웃</button>
+      <button class="pill-btn" id="btnMain" type="button">메인</button>
+      <button class="pill-btn" id="btnLogout" type="button">로그아웃</button>
     </div>
   </div>
 </header>
@@ -21,24 +21,22 @@
   <div class="panel">
     <div class="page-title">마이페이지</div>
 
-    <!-- 프로필 카드 -->
     <section class="card">
       <div class="profile">
         <div class="avatar"></div>
 
-        <div class="profile-info">
-          <div class="profile-top">
+        <div class="profile-info" style="width:100%;">
+          <div style="display:flex; align-items:flex-start; justify-content:space-between; gap:12px;">
             <div>
-              <p class="big" id="nicknameText">닉네임</p>
-              <p class="small" id="emailText">이메일</p>
+              <p class="big" id="nicknameText">-</p>
+              <p class="small" id="emailText">-</p>
             </div>
-            <button class="pill-btn" id="btnEdit">프로필 수정</button>
+            <button class="pill-btn" id="btnEdit" type="button">프로필 수정</button>
           </div>
 
-          <p class="bio" id="introText">소개</p>
+          <p class="bio" id="introText">-</p>
 
-          <!-- 수정 폼 (기본 숨김) -->
-          <div class="edit-box" id="editBox" style="display:none;">
+          <div id="editBox" style="display:none; margin-top:12px;">
             <div class="form-row">
               <label for="nicknameInput">닉네임</label>
               <input id="nicknameInput" class="auth-input" placeholder="닉네임" />
@@ -50,8 +48,8 @@
             </div>
 
             <div class="row-actions">
-              <button class="pill-btn" id="btnCancelEdit">취소</button>
-              <button class="primary-btn" id="btnSaveEdit">저장</button>
+              <button class="pill-btn" id="btnCancelEdit" type="button">취소</button>
+              <button class="primary-btn" id="btnSaveEdit" type="button">저장</button>
             </div>
 
             <p id="editMsg" class="auth-msg" style="margin-top:10px;"></p>
@@ -62,10 +60,9 @@
 
     <div style="height:14px;"></div>
 
-    <!-- 내 게시글 -->
     <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:12px;">
       <div class="page-title" style="margin:0;">내 게시글</div>
-      <button class="pill-btn" id="btnRefresh">새로고침</button>
+      <button class="pill-btn" id="btnRefresh" type="button">새로고침</button>
     </div>
 
     <div id="mine" class="grid"></div>
@@ -75,12 +72,15 @@
 
 <script src="/js/auth.js"></script>
 <script>
-  // 토큰 없으면 index로
   requireAuth();
 
   document.getElementById("btnMain").onclick = () => location.href = "/main.html";
   document.getElementById("btnLogout").onclick = logout;
   document.getElementById("btnRefresh").onclick = loadMine;
+
+  const nicknameText = document.getElementById("nicknameText");
+  const emailText = document.getElementById("emailText");
+  const introText = document.getElementById("introText");
 
   const btnEdit = document.getElementById("btnEdit");
   const editBox = document.getElementById("editBox");
@@ -88,11 +88,10 @@
   const btnSaveEdit = document.getElementById("btnSaveEdit");
   const editMsg = document.getElementById("editMsg");
 
-  const nicknameText = document.getElementById("nicknameText");
-  const emailText = document.getElementById("emailText");
-  const introText = document.getElementById("introText");
   const nicknameInput = document.getElementById("nicknameInput");
   const introInput = document.getElementById("introInput");
+
+  let MY_USER_ID = null;
 
   function fmtDate(s){
     if(!s) return "";
@@ -108,14 +107,41 @@
       .replaceAll("'","&#039;");
   }
 
+  async function loadMe(){
+    const res = await apiFetch("/api/users/me");
+    if(!res) return;
+
+    const me = await res.json();
+
+    MY_USER_ID = me.id ?? null;
+
+    nicknameText.textContent = me.nickname || "-";
+    emailText.textContent = me.email || "-";
+    introText.textContent = me.intro ? me.intro : "소개가 없습니다.";
+
+    nicknameInput.value = me.nickname || "";
+    introInput.value = me.intro || "";
+  }
+
+  // userId 기반 링크 + 내 자신이면 mypage
   function cardHtml(p){
-    const name = p.authorNickname || p.nickname || p.username || "USER";
+    const nickname = p.nickname || p.username || "USER";
+    const userId = p.userId;
+
+    const url = (MY_USER_ID && userId === MY_USER_ID)
+      ? "/mypage.html"
+      : "/user.html?userId=" + encodeURIComponent(userId);
+
     return `
       <article class="card">
         <div class="card-header">
           <div class="avatar"></div>
           <div class="meta">
-            <div class="name">${escapeHtml(name)}</div>
+            <div class="name">
+              <a href="${url}" class="user-link" style="color:inherit; text-decoration:none; font-weight:800;">
+                ${escapeHtml(nickname)}
+              </a>
+            </div>
             <div class="date">${escapeHtml(fmtDate(p.createdAt))}</div>
           </div>
         </div>
@@ -131,33 +157,13 @@
     `;
   }
 
-  async function loadMe(){
-    const res = await apiFetch("/api/users/me");
-    if(!res) return; // ✅ null 체크 (401/403이면 auth.js가 리다이렉트 처리)
-
-    const me = await res.json();
-
-    // ✅ 매핑 정리 (소개글 intro)
-    const nickname = me.nickname ?? me.name ?? me.username ?? "닉네임";
-    const email = me.email ?? ""; // me.username는 아이디라 이메일이 아님
-    const intro = me.intro ?? me.bio ?? "";
-
-    nicknameText.textContent = nickname;
-    emailText.textContent = email || "(이메일 없음)";
-    introText.textContent = intro ? intro : "소개가 없습니다.";
-
-    // 수정 폼 초기값
-    nicknameInput.value = nickname || "";
-    introInput.value = intro || "";
-  }
-
   async function loadMine(){
     const mineEl = document.getElementById("mine");
     const emptyEl = document.getElementById("emptyMine");
     mineEl.innerHTML = "";
 
     const res = await apiFetch("/api/boards/mine");
-    if(!res) return; // ✅ null 체크
+    if(!res) return;
 
     const list = await res.json();
 
@@ -165,11 +171,11 @@
       emptyEl.style.display = "block";
       return;
     }
+
     emptyEl.style.display = "none";
     mineEl.innerHTML = list.map(cardHtml).join("");
   }
 
-  // 프로필 수정 열기/닫기
   btnEdit.onclick = () => {
     editMsg.textContent = "";
     editBox.style.display = (editBox.style.display === "none") ? "block" : "none";
@@ -178,12 +184,10 @@
   btnCancelEdit.onclick = () => {
     editMsg.textContent = "";
     editBox.style.display = "none";
-    // 원래 값으로 되돌리기
-    nicknameInput.value = nicknameText.textContent || "";
+    nicknameInput.value = nicknameText.textContent === "-" ? "" : nicknameText.textContent;
     introInput.value = (introText.textContent === "소개가 없습니다.") ? "" : introText.textContent;
   };
 
-  // ✅ 닉네임/소개 저장
   btnSaveEdit.onclick = async () => {
     editMsg.textContent = "";
 
@@ -191,7 +195,7 @@
     const intro = introInput.value.trim();
 
     if(!nickname){
-      editMsg.textContent = "닉네임은 비워둘 수 없습니다.";
+      editMsg.textContent = "닉네임은 필수입니다.";
       return;
     }
 
@@ -200,16 +204,17 @@
       body: JSON.stringify({ nickname, intro })
     });
 
-    if(!res) return; // 401/403 처리
+    if(!res) return;
 
     if(!res.ok){
-      const t = await res.text();
+      const t = await res.text().catch(() => "");
       editMsg.textContent = "저장 실패: " + (t || res.status);
       return;
     }
 
     editBox.style.display = "none";
     await loadMe();
+    await loadMine();
   };
 
   (async () => {

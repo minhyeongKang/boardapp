@@ -398,8 +398,13 @@ input:focus, textarea:focus{
   justify-content:space-between;
   gap:12px;
 }
+
 .edit-box{
   margin-top:12px;
   padding-top:12px;
   border-top:1px solid #eee;
+}
+
+.user-link:hover{
+  text-decoration: underline;
 }
