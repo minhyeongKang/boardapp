@@ -5,8 +5,13 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
+import org.springframework.http.HttpMethod;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
+import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.web.SecurityFilterChain;
+import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
+import org.springframework.security.web.authentication.HttpStatusEntryPoint;
+import org.springframework.http.HttpStatus;
 
 @Configuration
 @RequiredArgsConstructor
@@ -18,25 +23,36 @@ public class SecurityConfig {
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
 
         http
-                .csrf(csrf -> csrf.disable())  // API 서버이므로 CSRF 보호 비활성화
-                .formLogin(form -> form.disable()) // 기본 로그인 폼 사용 안 함
-                .httpBasic(basic -> basic.disable()) // Basic Auth 사용 안 함
-                .authorizeHttpRequests(auth -> auth
-                        // 정적 리소스 및 루트 페이지 허용
-                        .requestMatchers(
-                                "/", "/index.html", "/signup.html", "/main.html", "/mypage.html",
-                                "/css/**", "/js/**", "/images/**", "/favicon.ico",
+                // ✅ API 서버: 세션 안 씀
+                .sessionManagement(sm -> sm.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
 
-                                // 인증 없이 허용할 API
-                                "/api/users/login", "/api/users/signup"
+                .csrf(csrf -> csrf.disable())
+                .formLogin(form -> form.disable())
+                .httpBasic(basic -> basic.disable())
+
+                // ✅ 인증 실패/권한 없음 시 로그인 페이지로 리다이렉트하지 말고 401/403 그대로 반환
+                .exceptionHandling(e -> e
+                        .authenticationEntryPoint(new HttpStatusEntryPoint(HttpStatus.UNAUTHORIZED))
+                )
+
+                .authorizeHttpRequests(auth -> auth
+                        // ✅ 프리플라이트 허용 (간혹 필요)
+                        .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
+
+                        // ✅ 정적 리소스/페이지 허용
+                        .requestMatchers(
+                                "/", "/index.html", "/signup.html", "/main.html", "/mypage.html", "/write.html",
+                                "/css/**", "/js/**", "/images/**", "/favicon.ico", "/error"
                         ).permitAll()
-                        // 그 외 요청은 인증 필요
+
+                        // ✅ 로그인/회원가입 API는 무조건 허용 (POST까지 명시)
+                        .requestMatchers(HttpMethod.POST, "/api/users/login", "/api/users/signup").permitAll()
+
+                        // ✅ 나머지는 인증 필요
                         .anyRequest().authenticated()
                 )
-                .addFilterBefore(
-                        jwtAuthenticationFilter,
-                        org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter.class
-                );
+
+                .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
 
         return http.build();
     }

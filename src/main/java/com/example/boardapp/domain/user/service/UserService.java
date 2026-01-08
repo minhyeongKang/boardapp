@@ -1,5 +1,6 @@
 package com.example.boardapp.domain.user.service;
 
+import com.example.boardapp.domain.user.dto.UserResponseDto;
 import com.example.boardapp.domain.user.entity.User;
 import com.example.boardapp.domain.user.repository.UserRepository;
 import com.example.boardapp.global.util.JwtUtil;
@@ -34,7 +35,8 @@ public class UserService {
             throw new RuntimeException("비밀번호가 일치하지 않습니다.");
         }
 
-        return jwtUtil.generateToken(email);
+        // 토큰에는 email 말고 username을 넣어야 Security(UserDetailsServiceImpl)와 일관됨
+        return jwtUtil.generateToken(user.getUsername());
     }
 
     public void logout() {
@@ -45,7 +47,7 @@ public class UserService {
     public User getMyInfo(String email) {
         User user = userRepository.findByEmail(email)
                 .orElseThrow(() -> new RuntimeException("사용자를 찾을 수 없습니다."));
-        user.setPassword(null); // 응답에 비밀번호 노출 방지
+        user.setPassword(null);
         return user;
     }
 
@@ -54,5 +56,18 @@ public class UserService {
         if (updated == 0) {
             throw new RuntimeException("수정할 사용자를 찾을 수 없습니다.");
         }
+    }
+
+    public UserResponseDto me(Long userId) {
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new RuntimeException("사용자를 찾을 수 없습니다."));
+
+        return new UserResponseDto(
+                user.getId(),
+                user.getUsername(),
+                user.getNickname(),
+                user.getEmail(),
+                user.getIntro()
+        );
     }
 }
