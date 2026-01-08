@@ -1,5 +1,6 @@
 package com.example.boardapp.domain.board.repository;
 
+import com.example.boardapp.domain.board.dto.BoardResponseDto;
 import com.example.boardapp.domain.board.entity.Board;
 import lombok.RequiredArgsConstructor;
 import org.springframework.jdbc.core.JdbcTemplate;
@@ -96,6 +97,38 @@ public class BoardRepository {
             if (modified != null) b.setModifiedAt(modified.toLocalDateTime());
 
             return b;
+        }, userId);
+    }
+
+    public List<BoardResponseDto> findAllByUserIdDesc(Long userId) {
+        String sql = """
+        SELECT
+            b.ID,
+            b.USER_ID,
+            u.NICKNAME AS NICKNAME,
+            b.TITLE,
+            b.CONTENT,
+            b.CREATEDAT,
+            b.MODIFIEDAT
+        FROM BOARDS b
+        JOIN USERS u ON u.ID = b.USER_ID
+        WHERE b.USER_ID = ?
+        ORDER BY b.ID DESC
+    """;
+
+        return jdbc.query(sql, (rs, rowNum) -> {
+            Timestamp created = rs.getTimestamp("CREATEDAT");
+            Timestamp modified = rs.getTimestamp("MODIFIEDAT");
+
+            return new BoardResponseDto(
+                    rs.getLong("ID"),
+                    rs.getLong("USER_ID"),
+                    rs.getString("NICKNAME"),
+                    rs.getString("TITLE"),
+                    rs.getString("CONTENT"),
+                    created != null ? created.toLocalDateTime() : null,
+                    modified != null ? modified.toLocalDateTime() : null
+            );
         }, userId);
     }
 }

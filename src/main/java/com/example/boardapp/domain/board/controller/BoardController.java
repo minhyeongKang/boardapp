@@ -40,4 +40,9 @@ public class BoardController {
         Long userId = userDetails.getUser().getId();
         return ResponseEntity.ok(boardService.findMine(userId));
     }
+
+    @GetMapping("/user/id/{userId}")
+    public ResponseEntity<List<BoardResponseDto>> postsByUserId(@PathVariable Long userId) {
+        return ResponseEntity.ok(boardService.findByUserId(userId));
+    }
 }

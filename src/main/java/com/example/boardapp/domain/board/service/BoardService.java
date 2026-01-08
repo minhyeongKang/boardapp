@@ -51,4 +51,8 @@ public class BoardService {
                 b.getModifiedAt()
         );
     }
+
+    public List<BoardResponseDto> findByUserId(Long userId) {
+        return boardRepository.findAllByUserIdDesc(userId);
+    }
 }

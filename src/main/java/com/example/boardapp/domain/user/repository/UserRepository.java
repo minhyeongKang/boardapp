@@ -87,4 +87,23 @@ public class UserRepository {
             return Optional.empty();
         }, id);
     }
+
+    public Optional<User> findByNickname(String nickname) {
+        String sql = "SELECT * FROM users WHERE nickname = ?";
+        return jdbc.query(sql, rs -> {
+            if (rs.next()) {
+                User user = new User();
+                user.setId(rs.getLong("ID"));
+                user.setUsername(rs.getString("USERNAME"));
+                user.setPassword(rs.getString("PASSWORD"));
+                user.setNickname(rs.getString("NICKNAME"));
+                user.setEmail(rs.getString("EMAIL"));
+                user.setIntro(rs.getString("INTRO"));
+                user.setCreatedAt(rs.getTimestamp("CREATEDAT").toLocalDateTime());
+                user.setModifiedAt(rs.getTimestamp("MODIFIEDAT").toLocalDateTime());
+                return Optional.of(user);
+            }
+            return Optional.empty();
+        }, nickname);
+    }
 }

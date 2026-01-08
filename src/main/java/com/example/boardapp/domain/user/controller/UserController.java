@@ -2,6 +2,7 @@ package com.example.boardapp.domain.user.controller;
 
 import com.example.boardapp.domain.user.dto.LoginRequestDto;
 import com.example.boardapp.domain.user.dto.UserMeResponseDto;
+import com.example.boardapp.domain.user.dto.UserResponseDto;
 import com.example.boardapp.domain.user.entity.User;
 import com.example.boardapp.domain.user.service.UserService;
 import com.example.boardapp.global.security.UserDetailsImpl;
@@ -56,5 +57,10 @@ public class UserController {
     @GetMapping("/me")
     public ResponseEntity<UserMeResponseDto> me(@AuthenticationPrincipal UserDetailsImpl userDetails) {
         return ResponseEntity.ok(UserMeResponseDto.from(userDetails.getUser()));
+    }
+
+    @GetMapping("/profile/id/{userId}")
+    public ResponseEntity<UserResponseDto> profileById(@PathVariable Long userId) {
+        return ResponseEntity.ok(userService.getPublicProfileById(userId));
     }
 }
