@@ -28,13 +28,11 @@ public class BoardController {
         return ResponseEntity.ok().build();
     }
 
-    // 전체 피드 (DTO로)
     @GetMapping
     public ResponseEntity<List<BoardResponseDto>> list() {
         return ResponseEntity.ok(boardService.findAll());
     }
 
-    // 내 글
     @GetMapping("/mine")
     public ResponseEntity<List<BoardResponseDto>> mine(@AuthenticationPrincipal UserDetailsImpl userDetails) {
         Long userId = userDetails.getUser().getId();
@@ -44,5 +42,23 @@ public class BoardController {
     @GetMapping("/user/id/{userId}")
     public ResponseEntity<List<BoardResponseDto>> postsByUserId(@PathVariable Long userId) {
         return ResponseEntity.ok(boardService.findByUserId(userId));
+    }
+
+    // 게시글 단건 조회 (수정 화면에서 사용)
+    @GetMapping("/{boardId}")
+    public ResponseEntity<BoardResponseDto> getOne(@PathVariable Long boardId) {
+        return ResponseEntity.ok(boardService.findOne(boardId));
+    }
+
+    // 게시글 수정 (내 글만 가능)
+    @PutMapping("/{boardId}")
+    public ResponseEntity<Void> update(
+            @PathVariable Long boardId,
+            @AuthenticationPrincipal UserDetailsImpl userDetails,
+            @RequestBody BoardRequestDto req
+    ) {
+        Long userId = userDetails.getUser().getId();
+        boardService.update(boardId, userId, req);
+        return ResponseEntity.ok().build();
     }
 }

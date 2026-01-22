@@ -7,12 +7,33 @@
   <link rel="stylesheet" href="/css/app.css" />
 </head>
 <body>
+
 <header class="topbar">
   <div class="topbar-inner">
     <div class="brand">BoardApp</div>
-    <div class="actions">
-      <button class="pill-btn" id="btnMain" type="button">메인</button>
-      <button class="pill-btn" id="btnLogout" type="button">로그아웃</button>
+
+    <div class="icon-actions">
+      <button class="icon-action" id="btnMain" title="메인" type="button">
+        <svg viewBox="0 0 24 24">
+          <path d="M3 11.5L12 4l9 7.5"></path>
+          <path d="M6 10.5V20h12v-9.5"></path>
+          <path d="M10 20v-6h4v6"></path>
+        </svg>
+      </button>
+
+      <button class="icon-action" id="btnWrite" title="새 글 작성" type="button">
+        <svg viewBox="0 0 24 24">
+          <path d="M12 5v14M5 12h14"/>
+        </svg>
+      </button>
+
+      <button class="icon-action" id="btnLogout" title="로그아웃" type="button">
+        <svg viewBox="0 0 24 24">
+          <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/>
+          <polyline points="16 17 21 12 16 7"/>
+          <line x1="21" y1="12" x2="9" y2="12"/>
+        </svg>
+      </button>
     </div>
   </div>
 </header>
@@ -26,47 +47,40 @@
         <div class="avatar"></div>
 
         <div class="profile-info" style="width:100%;">
-          <div style="display:flex; align-items:flex-start; justify-content:space-between; gap:12px;">
+          <div style="display:flex; justify-content:space-between;">
             <div>
-              <p class="big" id="nicknameText">-</p>
-              <p class="small" id="emailText">-</p>
+              <p class="big" id="nicknameText"></p>
+              <p class="small" id="emailText"></p>
             </div>
             <button class="pill-btn" id="btnEdit" type="button">프로필 수정</button>
           </div>
 
-          <p class="bio" id="introText">-</p>
+          <p class="bio" id="introText"></p>
 
           <div id="editBox" style="display:none; margin-top:12px;">
             <div class="form-row">
-              <label for="nicknameInput">닉네임</label>
-              <input id="nicknameInput" class="auth-input" placeholder="닉네임" />
+              <label>닉네임</label>
+              <input id="nicknameInput"/>
             </div>
 
             <div class="form-row">
-              <label for="introInput">소개</label>
-              <textarea id="introInput" class="auth-textarea" rows="3" placeholder="소개를 입력하세요"></textarea>
+              <label>소개</label>
+              <textarea id="introInput"></textarea>
             </div>
 
             <div class="row-actions">
               <button class="pill-btn" id="btnCancelEdit" type="button">취소</button>
               <button class="primary-btn" id="btnSaveEdit" type="button">저장</button>
             </div>
-
-            <p id="editMsg" class="auth-msg" style="margin-top:10px;"></p>
           </div>
         </div>
       </div>
     </section>
 
-    <div style="height:14px;"></div>
-
-    <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:12px;">
-      <div class="page-title" style="margin:0;">내 게시글</div>
-      <button class="pill-btn" id="btnRefresh" type="button">새로고침</button>
+    <div style="margin-top:18px;">
+      <div class="page-title">내 게시글</div>
+      <div id="mine" class="grid"></div>
     </div>
-
-    <div id="mine" class="grid"></div>
-    <div id="emptyMine" class="empty" style="display:none;">아직 작성한 게시글이 없습니다.</div>
   </div>
 </main>
 
@@ -74,29 +88,26 @@
 <script>
   requireAuth();
 
-  document.getElementById("btnMain").onclick = () => location.href = "/main.html";
-  document.getElementById("btnLogout").onclick = logout;
-  document.getElementById("btnRefresh").onclick = loadMine;
+  const btnMain = document.getElementById("btnMain");
+  const btnWrite = document.getElementById("btnWrite");
+  const btnLogout = document.getElementById("btnLogout");
+
+  btnMain.onclick = () => location.href = "/main.html";
+  btnWrite.onclick = () => location.href = "/write.html";
+  btnLogout.onclick = logout;
+
+  const btnEdit = document.getElementById("btnEdit");
+  const btnCancelEdit = document.getElementById("btnCancelEdit");
+  const btnSaveEdit = document.getElementById("btnSaveEdit");
+  const editBox = document.getElementById("editBox");
 
   const nicknameText = document.getElementById("nicknameText");
   const emailText = document.getElementById("emailText");
   const introText = document.getElementById("introText");
 
-  const btnEdit = document.getElementById("btnEdit");
-  const editBox = document.getElementById("editBox");
-  const btnCancelEdit = document.getElementById("btnCancelEdit");
-  const btnSaveEdit = document.getElementById("btnSaveEdit");
-  const editMsg = document.getElementById("editMsg");
-
   const nicknameInput = document.getElementById("nicknameInput");
   const introInput = document.getElementById("introInput");
-
-  let MY_USER_ID = null;
-
-  function fmtDate(s){
-    if(!s) return "";
-    return String(s).replace("T"," ");
-  }
+  const mineEl = document.getElementById("mine");
 
   function escapeHtml(str){
     return (str ?? "")
@@ -107,48 +118,80 @@
       .replaceAll("'","&#039;");
   }
 
+  function fmtDate(s){
+    return s ? String(s).replace("T"," ") : "";
+  }
+
+  // 메뉴 토글/닫기
+  function toggleMenu(e, boardId) {
+    e.stopPropagation();
+
+    document.querySelectorAll(".card-menu").forEach(m => {
+      if (m.id !== "menu-" + boardId) m.style.display = "none";
+    });
+
+    const menu = document.getElementById("menu-" + boardId);
+    if (!menu) return;
+
+    menu.style.display = (menu.style.display === "block") ? "none" : "block";
+  }
+
+  document.addEventListener("click", () => {
+    document.querySelectorAll(".card-menu").forEach(m => m.style.display = "none");
+  });
+
   async function loadMe(){
     const res = await apiFetch("/api/users/me");
     if(!res) return;
-
     const me = await res.json();
 
-    MY_USER_ID = me.id ?? null;
+    nicknameText.textContent = me.nickname;
+    emailText.textContent = me.email;
+    introText.textContent = me.intro || "소개가 없습니다.";
 
-    nicknameText.textContent = me.nickname || "-";
-    emailText.textContent = me.email || "-";
-    introText.textContent = me.intro ? me.intro : "소개가 없습니다.";
-
-    nicknameInput.value = me.nickname || "";
+    nicknameInput.value = me.nickname;
     introInput.value = me.intro || "";
   }
 
-  // userId 기반 링크 + 내 자신이면 mypage
   function cardHtml(p){
-    const nickname = p.nickname || p.username || "USER";
-    const userId = p.userId;
-
-    const url = (MY_USER_ID && userId === MY_USER_ID)
-      ? "/mypage.html"
-      : "/user.html?userId=" + encodeURIComponent(userId);
+    const editUrl = "/edit.html?boardId=" + encodeURIComponent(p.id);
 
     return `
       <article class="card">
-        <div class="card-header">
-          <div class="avatar"></div>
-          <div class="meta">
-            <div class="name">
-              <a href="${url}" class="user-link" style="color:inherit; text-decoration:none; font-weight:800;">
-                ${escapeHtml(nickname)}
-              </a>
+        <div class="card-header" style="display:flex; justify-content:space-between; align-items:flex-start;">
+          <div style="display:flex; gap:12px; align-items:center;">
+            <div class="avatar"></div>
+            <div class="meta">
+              <div class="name">${escapeHtml(p.nickname || "USER")}</div>
+              <div class="date">${escapeHtml(fmtDate(p.createdAt))}</div>
             </div>
-            <div class="date">${escapeHtml(fmtDate(p.createdAt))}</div>
+          </div>
+
+          <div style="position:relative;">
+            <button type="button"
+                    class="more-btn"
+                    onclick="toggleMenu(event, ${p.id})"
+                    title="더보기"
+                    aria-label="더보기">⋮</button>
+
+            <div id="menu-${p.id}" class="card-menu"
+                 style="display:none; position:absolute; right:0; top:32px;
+                        background:#fff; border:1px solid var(--line);
+                        border-radius:12px; box-shadow:var(--shadow);
+                        overflow:hidden; z-index:10; min-width:120px;">
+              <button type="button"
+                      style="padding:10px 14px; width:100%; border:0; background:none;
+                             text-align:left; font-weight:700; cursor:pointer;"
+                      onclick="location.href='${editUrl}'">수정</button>
+            </div>
           </div>
         </div>
+
         <div class="card-body">
-          <p class="title">${escapeHtml(p.title || "")}</p>
-          <p class="content">${escapeHtml(p.content || "")}</p>
+          <p class="title">${escapeHtml(p.title)}</p>
+          <p class="content">${escapeHtml(p.content)}</p>
         </div>
+
         <div class="card-footer">
           <span>좋아요</span>
           <span>댓글</span>
@@ -158,69 +201,34 @@
   }
 
   async function loadMine(){
-    const mineEl = document.getElementById("mine");
-    const emptyEl = document.getElementById("emptyMine");
-    mineEl.innerHTML = "";
-
     const res = await apiFetch("/api/boards/mine");
     if(!res) return;
-
     const list = await res.json();
-
-    if(!list || list.length === 0){
-      emptyEl.style.display = "block";
-      return;
-    }
-
-    emptyEl.style.display = "none";
     mineEl.innerHTML = list.map(cardHtml).join("");
   }
 
-  btnEdit.onclick = () => {
-    editMsg.textContent = "";
-    editBox.style.display = (editBox.style.display === "none") ? "block" : "none";
-  };
-
-  btnCancelEdit.onclick = () => {
-    editMsg.textContent = "";
-    editBox.style.display = "none";
-    nicknameInput.value = nicknameText.textContent === "-" ? "" : nicknameText.textContent;
-    introInput.value = (introText.textContent === "소개가 없습니다.") ? "" : introText.textContent;
-  };
+  btnEdit.onclick = () => editBox.style.display = "block";
+  btnCancelEdit.onclick = () => editBox.style.display = "none";
 
   btnSaveEdit.onclick = async () => {
-    editMsg.textContent = "";
-
-    const nickname = nicknameInput.value.trim();
-    const intro = introInput.value.trim();
-
-    if(!nickname){
-      editMsg.textContent = "닉네임은 필수입니다.";
-      return;
-    }
-
     const res = await apiFetch("/api/users/me", {
-      method: "PUT",
-      body: JSON.stringify({ nickname, intro })
+      method:"PUT",
+      body:JSON.stringify({
+        nickname: nicknameInput.value,
+        intro: introInput.value
+      })
     });
-
     if(!res) return;
-
-    if(!res.ok){
-      const t = await res.text().catch(() => "");
-      editMsg.textContent = "저장 실패: " + (t || res.status);
-      return;
-    }
 
     editBox.style.display = "none";
     await loadMe();
-    await loadMine();
   };
 
-  (async () => {
-    await loadMe();
-    await loadMine();
-  })();
+  loadMe();
+  loadMine();
+
+  // inline onclick에서 사용
+  window.toggleMenu = toggleMenu;
 </script>
 </body>
 </html>
