@@ -35,18 +35,7 @@ public class BoardRepository {
 
         return jdbc.query(sql, rs -> {
             if (rs.next()) {
-                Board b = new Board();
-                b.setId(rs.getLong("ID"));
-                b.setUserId(rs.getLong("USER_ID"));
-                b.setTitle(rs.getString("TITLE"));
-                b.setContent(rs.getString("CONTENT"));
-
-                Timestamp created = rs.getTimestamp("CREATEDAT");
-                Timestamp modified = rs.getTimestamp("MODIFIEDAT");
-                if (created != null) b.setCreatedAt(created.toLocalDateTime());
-                if (modified != null) b.setModifiedAt(modified.toLocalDateTime());
-
-                return Optional.of(b);
+                return Optional.of(mapBoard(rs));
             }
             return Optional.empty();
         }, userId);
@@ -59,23 +48,9 @@ public class BoardRepository {
             ORDER BY b.ID DESC
         """;
 
-        return jdbc.query(sql, (rs, rowNum) -> {
-            Board b = new Board();
-            b.setId(rs.getLong("ID"));
-            b.setUserId(rs.getLong("USER_ID"));
-            b.setTitle(rs.getString("TITLE"));
-            b.setContent(rs.getString("CONTENT"));
-
-            Timestamp created = rs.getTimestamp("CREATEDAT");
-            Timestamp modified = rs.getTimestamp("MODIFIEDAT");
-            if (created != null) b.setCreatedAt(created.toLocalDateTime());
-            if (modified != null) b.setModifiedAt(modified.toLocalDateTime());
-
-            return b;
-        });
+        return jdbc.query(sql, (rs, rowNum) -> mapBoard(rs));
     }
 
-    // 내 글 목록
     public List<Board> findByUserIdDesc(Long userId) {
         String sql = """
             SELECT *
@@ -84,37 +59,24 @@ public class BoardRepository {
             ORDER BY ID DESC
         """;
 
-        return jdbc.query(sql, (rs, rowNum) -> {
-            Board b = new Board();
-            b.setId(rs.getLong("ID"));
-            b.setUserId(rs.getLong("USER_ID"));
-            b.setTitle(rs.getString("TITLE"));
-            b.setContent(rs.getString("CONTENT"));
-
-            Timestamp created = rs.getTimestamp("CREATEDAT");
-            Timestamp modified = rs.getTimestamp("MODIFIEDAT");
-            if (created != null) b.setCreatedAt(created.toLocalDateTime());
-            if (modified != null) b.setModifiedAt(modified.toLocalDateTime());
-
-            return b;
-        }, userId);
+        return jdbc.query(sql, (rs, rowNum) -> mapBoard(rs), userId);
     }
 
     public List<BoardResponseDto> findAllByUserIdDesc(Long userId) {
         String sql = """
-        SELECT
-            b.ID,
-            b.USER_ID,
-            u.NICKNAME AS NICKNAME,
-            b.TITLE,
-            b.CONTENT,
-            b.CREATEDAT,
-            b.MODIFIEDAT
-        FROM BOARDS b
-        JOIN USERS u ON u.ID = b.USER_ID
-        WHERE b.USER_ID = ?
-        ORDER BY b.ID DESC
-    """;
+            SELECT
+                b.ID,
+                b.USER_ID,
+                u.NICKNAME AS NICKNAME,
+                b.TITLE,
+                b.CONTENT,
+                b.CREATEDAT,
+                b.MODIFIEDAT
+            FROM BOARDS b
+            JOIN USERS u ON u.ID = b.USER_ID
+            WHERE b.USER_ID = ?
+            ORDER BY b.ID DESC
+        """;
 
         return jdbc.query(sql, (rs, rowNum) -> {
             Timestamp created = rs.getTimestamp("CREATEDAT");
@@ -130,5 +92,46 @@ public class BoardRepository {
                     modified != null ? modified.toLocalDateTime() : null
             );
         }, userId);
+    }
+
+    // 게시글 단건 조회
+    public Optional<Board> findById(Long boardId) {
+        String sql = """
+            SELECT *
+            FROM BOARDS
+            WHERE ID = ?
+        """;
+
+        return jdbc.query(sql, rs -> {
+            if (rs.next()) {
+                return Optional.of(mapBoard(rs));
+            }
+            return Optional.empty();
+        }, boardId);
+    }
+
+    // 게시글 수정
+    public int update(Board board) {
+        String sql = """
+            UPDATE BOARDS
+            SET TITLE = ?, CONTENT = ?, MODIFIEDAT = SYSDATE
+            WHERE ID = ?
+        """;
+        return jdbc.update(sql, board.getTitle(), board.getContent(), board.getId());
+    }
+
+    private Board mapBoard(java.sql.ResultSet rs) throws java.sql.SQLException {
+        Board b = new Board();
+        b.setId(rs.getLong("ID"));
+        b.setUserId(rs.getLong("USER_ID"));
+        b.setTitle(rs.getString("TITLE"));
+        b.setContent(rs.getString("CONTENT"));
+
+        Timestamp created = rs.getTimestamp("CREATEDAT");
+        Timestamp modified = rs.getTimestamp("MODIFIEDAT");
+        if (created != null) b.setCreatedAt(created.toLocalDateTime());
+        if (modified != null) b.setModifiedAt(modified.toLocalDateTime());
+
+        return b;
     }
 }
