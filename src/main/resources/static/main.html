@@ -158,6 +158,17 @@
           <p class="content">${escapeHtml(p.content || "")}</p>
         </div>
 
+        <div class="comments" id="comments-${p.id}">
+          <div class="comment-list" id="commentList-${p.id}">댓글 불러오는 중...</div>
+
+          <div class="comment-form">
+            <input type="text" class="input" id="commentInput-${p.id}" placeholder="댓글을 입력하세요" />
+            <button class="pill-btn" onclick="submitComment(${p.id})">등록</button>
+          </div>
+        </div>
+
+
+
         <div class="card-footer">
           <span>좋아요</span>
           <span>댓글</span>
@@ -182,6 +193,9 @@
 
     emptyEl.style.display = "none";
     feedEl.innerHTML = list.map(cardHtml).join("");
+    // 게시글 카드가 그려진 다음, 각 게시글의 댓글을 불러온다
+    list.forEach(p => loadComments(p.id));
+
   }
 
   (async () => {
@@ -189,8 +203,69 @@
     await loadFeed();
   })();
 
+    async function loadComments(boardId){
+    const el = document.getElementById(`commentList-${boardId}`);
+    if(!el) return;
+
+    const res = await apiFetch(`/api/boards/${boardId}/comments`);
+    if(!res) return;
+
+    const list = await res.json();
+    if(!list || list.length === 0){
+      el.innerHTML = `<div class="muted">아직 댓글이 없어요</div>`;
+      return;
+    }
+
+    el.innerHTML = list.map(c => {
+      const mine = (MY_USER_ID && c.userId === MY_USER_ID);
+      return `
+        <div class="comment-item">
+          <div class="comment-top">
+            <b>${escapeHtml(c.nickname || "USER")}</b>
+            <span class="muted">${fmtDate(c.createdAt)}</span>
+          </div>
+          <div class="comment-content">${escapeHtml(c.content || "")}</div>
+          ${mine ? `<button class="mini-btn" onclick="deleteComment(${c.id}, ${boardId})">삭제</button>` : ``}
+        </div>
+      `;
+    }).join("");
+  }
+
+  async function submitComment(boardId){
+    const input = document.getElementById(`commentInput-${boardId}`);
+    if(!input) return;
+
+    const content = (input.value || "").trim();
+    if(!content){
+      alert("댓글 내용을 입력하세요!");
+      return;
+    }
+
+    const res = await apiFetch(`/api/boards/${boardId}/comments`, {
+      method: "POST",
+      body: JSON.stringify({ content })
+    });
+    if(!res) return;
+
+    input.value = "";
+    await loadComments(boardId);
+  }
+
+  async function deleteComment(commentId, boardId){
+    if(!confirm("댓글을 삭제할까요?")) return;
+
+    const res = await apiFetch(`/api/comments/${commentId}`, { method: "DELETE" });
+    if(!res) return;
+
+    await loadComments(boardId);
+  }
+
+
   // inline onclick에서 사용
   window.toggleMenu = toggleMenu;
+  window.submitComment = submitComment;
+  window.deleteComment = deleteComment;
+
 </script>
 </body>
 </html>
