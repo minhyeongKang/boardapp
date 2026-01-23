@@ -14,9 +14,7 @@
 
     <div class="icon-actions">
       <button class="icon-action" id="btnWrite" title="새 글 작성" type="button">
-        <svg viewBox="0 0 24 24">
-          <path d="M12 5v14M5 12h14"/>
-        </svg>
+        <svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>
       </button>
 
       <button class="icon-action" id="btnMy" title="마이페이지" type="button">
@@ -64,11 +62,7 @@
   btnRefresh.onclick = loadFeed;
 
   let MY_USER_ID = null;
-
-  // 게시글(boardId)별로 지금 수정 중인 댓글 id를 저장하는 곳
-  // 예: editingCommentId[1] = 123  (1번 게시글에서 123번 댓글 수정 중)
-  const editingCommentId = {};
-
+  let editingInlineCommentId = null;
 
   function fmtDate(s){
     if(!s) return "";
@@ -91,8 +85,7 @@
     MY_USER_ID = me.id ?? null;
   }
 
-  // 메뉴 토글/닫기
-  function toggleMenu(e, boardId) {
+  function togglePostMenu(e, boardId) {
     e.stopPropagation();
 
     document.querySelectorAll(".card-menu").forEach(m => {
@@ -105,9 +98,41 @@
     menu.style.display = (menu.style.display === "block") ? "none" : "block";
   }
 
+  function toggleCommentMenu(e, commentId) {
+    e.stopPropagation();
+
+    document.querySelectorAll(".comment-menu").forEach(m => {
+      if (m.id !== "c-menu-" + commentId) m.style.display = "none";
+    });
+
+    const menu = document.getElementById("c-menu-" + commentId);
+    if (!menu) return;
+
+    menu.style.display = (menu.style.display === "block") ? "none" : "block";
+  }
+
   document.addEventListener("click", () => {
     document.querySelectorAll(".card-menu").forEach(m => m.style.display = "none");
+    document.querySelectorAll(".comment-menu").forEach(m => m.style.display = "none");
   });
+
+  async function toggleComments(boardId){
+    const wrap = document.getElementById(`comments-${boardId}`);
+    if(!wrap) return;
+
+    // 한 번에 하나만 열리게
+    document.querySelectorAll(".comments").forEach(x => {
+      if (x.id !== `comments-${boardId}`) x.style.display = "none";
+    });
+
+    const hidden = (wrap.style.display === "" || wrap.style.display === "none");
+    if (hidden) {
+      wrap.style.display = "block";
+      await loadComments(boardId);
+    } else {
+      wrap.style.display = "none";
+    }
+  }
 
   function cardHtml(p){
     const nickname = p.nickname || p.username || "USER";
@@ -120,23 +145,11 @@
     const isMine = (MY_USER_ID && userId === MY_USER_ID);
     const editUrl = "/edit.html?boardId=" + encodeURIComponent(p.id);
 
-    const moreHtml = isMine ? `
-      <div class="more-wrap" style="position:relative;">
-        <button type="button"
-                class="more-btn"
-                onclick="toggleMenu(event, ${p.id})"
-                title="더보기"
-                aria-label="더보기">⋮</button>
-
-        <div id="menu-${p.id}" class="card-menu"
-             style="display:none; position:absolute; right:0; top:32px;
-                    background:#fff; border:1px solid var(--line);
-                    border-radius:12px; box-shadow:var(--shadow);
-                    overflow:hidden; z-index:10; min-width:120px;">
-          <button type="button"
-                  style="padding:10px 14px; width:100%; border:0; background:none;
-                         text-align:left; font-weight:700; cursor:pointer;"
-                  onclick="location.href='${editUrl}'">수정</button>
+    const postMenuHtml = isMine ? `
+      <div style="position:relative;">
+        <button type="button" class="more-btn" onclick="togglePostMenu(event, ${p.id})" title="더보기">⋮</button>
+        <div id="menu-${p.id}" class="card-menu">
+          <button type="button" class="menu-item" onclick="location.href='${editUrl}'">수정</button>
         </div>
       </div>
     ` : `<div style="width:28px;height:28px;"></div>`;
@@ -148,14 +161,14 @@
             <div class="avatar"></div>
             <div class="meta">
               <div class="name">
-                <a href="${profileUrl}" class="user-link" style="color:inherit; text-decoration:none; font-weight:800;">
+                <a href="${profileUrl}" class="user-link" style="font-weight:800;">
                   ${escapeHtml(nickname)}
                 </a>
               </div>
               <div class="date">${escapeHtml(fmtDate(p.createdAt))}</div>
             </div>
           </div>
-          ${moreHtml}
+          ${postMenuHtml}
         </div>
 
         <div class="card-body">
@@ -163,23 +176,28 @@
           <p class="content">${escapeHtml(p.content || "")}</p>
         </div>
 
+        <div class="ig-actions">
+          <button class="ig-action-btn" type="button" title="좋아요"
+                  onclick="alert('좋아요는 다음 단계로 구현할게요')">
+            <svg viewBox="0 0 24 24">
+              <path d="M20.8 4.6c-1.7-1.7-4.5-1.7-6.2 0L12 7.2 9.4 4.6c-1.7-1.7-4.5-1.7-6.2 0s-1.7 4.5 0 6.2L12 20.6l8.8-8.8c1.7-1.7 1.7-4.5 0-6.2z"/>
+            </svg>
+          </button>
+
+          <button class="ig-action-btn" type="button" title="댓글" onclick="toggleComments(${p.id})">
+            <svg viewBox="0 0 24 24">
+              <path d="M21 15a4 4 0 0 1-4 4H8l-5 3V7a4 4 0 0 1 4-4h10a4 4 0 0 1 4 4z"/>
+            </svg>
+          </button>
+        </div>
+
         <div class="comments" id="comments-${p.id}">
           <div class="comment-list" id="commentList-${p.id}">댓글 불러오는 중...</div>
 
           <div class="comment-form">
-              <input type="text" class="input" id="commentInput-${p.id}" placeholder="댓글을 입력하세요" />
-
-              <button class="pill-btn" id="commentSubmit-${p.id}" onclick="submitComment(${p.id})">등록</button>
-
-              <button class="pill-btn" id="commentCancel-${p.id}" onclick="cancelEdit(${p.id})" style="display:none;">취소</button>
-           </div>
-        </div>
-
-
-
-        <div class="card-footer">
-          <span>좋아요</span>
-          <span>댓글</span>
+            <input type="text" class="input" id="commentInput-${p.id}" placeholder="댓글을 입력하세요" />
+            <button class="pill-btn" type="button" onclick="submitComment(${p.id})">등록</button>
+          </div>
         </div>
       </article>
     `;
@@ -201,17 +219,9 @@
 
     emptyEl.style.display = "none";
     feedEl.innerHTML = list.map(cardHtml).join("");
-    // 게시글 카드가 그려진 다음, 각 게시글의 댓글을 불러온다
-    list.forEach(p => loadComments(p.id));
-
   }
 
-  (async () => {
-    await loadMyContext();
-    await loadFeed();
-  })();
-
-    async function loadComments(boardId){
+  async function loadComments(boardId){
     const el = document.getElementById(`commentList-${boardId}`);
     if(!el) return;
 
@@ -225,28 +235,49 @@
     }
 
     el.innerHTML = list.map(c => {
-  const mine = (MY_USER_ID && c.userId === MY_USER_ID);
-  return `
-    <div class="comment-item" id="comment-${c.id}">
-      <div class="comment-top">
-        <b>${escapeHtml(c.nickname || "USER")}</b>
-        <span class="muted">${fmtDate(c.createdAt)}</span>
-      </div>
+      const mine = (MY_USER_ID && c.userId === MY_USER_ID);
 
-      <div class="comment-content" id="comment-content-${c.id}">
-        ${escapeHtml(c.content || "")}
-      </div>
+      const profileUrl = mine
+        ? "/mypage.html"
+        : "/user.html?userId=" + encodeURIComponent(c.userId);
 
-      ${mine ? `
-        <button class="mini-btn"
-                onclick="startInlineEdit(${c.id}, ${boardId}, '${encodeURIComponent(c.content || "")}')">수정</button>
-        <button class="mini-btn"
-                onclick="deleteComment(${c.id}, ${boardId})">삭제</button>
-      ` : ``}
-    </div>
-  `;
-  }).join("");
+      const menuHtml = mine ? `
+        <div style="position:relative;">
+          <button type="button"
+                  class="more-btn"
+                  onclick="toggleCommentMenu(event, ${c.id})"
+                  title="더보기">⋮</button>
+          <div id="c-menu-${c.id}" class="comment-menu">
+            <button type="button" class="menu-item"
+                    onclick="startInlineEdit(${c.id}, ${boardId}, '${encodeURIComponent(c.content || "")}')">수정</button>
+            <button type="button" class="menu-item"
+                    onclick="deleteComment(${c.id}, ${boardId})">삭제</button>
+          </div>
+        </div>
+      ` : `<div style="width:28px;height:28px;"></div>`;
 
+      return `
+        <div class="comment-item" id="comment-${c.id}">
+          <div class="comment-body">
+            <div class="comment-top">
+              <div style="display:flex; align-items:center; gap:8px;">
+                <a href="${profileUrl}"
+                   class="user-link"
+                   style="font-weight:800;">
+                  ${escapeHtml(c.nickname || "USER")}
+                </a>
+                <span class="muted">${escapeHtml(fmtDate(c.createdAt))}</span>
+              </div>
+              ${menuHtml}
+            </div>
+
+            <div class="comment-content" id="comment-content-${c.id}">
+              ${escapeHtml(c.content || "")}
+            </div>
+          </div>
+        </div>
+      `;
+    }).join("");
   }
 
   async function submitComment(boardId){
@@ -259,24 +290,6 @@
       return;
     }
 
-    // 지금 이 게시글이 "수정 모드"인지 확인
-    const commentId = editingCommentId[boardId];
-
-    // 1) 수정 모드라면 → PUT 요청
-    if (commentId) {
-        const res = await apiFetch(`/api/comments/${commentId}`, {
-          method: "PUT",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ content })
-        });
-    if(!res) return;
-
-    // 수정 끝났으니 원상복구
-    cancelEdit(boardId);
-    await loadComments(boardId);
-    return;
-    }
-
     const res = await apiFetch(`/api/boards/${boardId}/comments`, {
       method: "POST",
       body: JSON.stringify({ content })
@@ -286,84 +299,61 @@
     input.value = "";
     await loadComments(boardId);
   }
-  // 지금 어떤 댓글이 편집 중인지 저장 (동시에 여러 개 열리는 것 방지)
-  let editingInlineCommentId = null;
 
-  // 댓글 자리에서 인라인 편집 시작
   function startInlineEdit(commentId, boardId, encodedContent) {
-    // 이미 다른 댓글 수정 중이면 막기(원하면 허용으로 바꿀 수도 있음)
     if (editingInlineCommentId && editingInlineCommentId !== commentId) {
       alert("다른 댓글을 수정 중이에요. 먼저 저장 또는 취소해주세요.");
       return;
     }
-  editingInlineCommentId = commentId;
+    editingInlineCommentId = commentId;
 
-  const contentEl = document.getElementById(`comment-content-${commentId}`);
-  if (!contentEl) return;
+    const contentEl = document.getElementById(`comment-content-${commentId}`);
+    if (!contentEl) return;
 
-  const currentContent = decodeURIComponent(encodedContent || "");
+    const currentContent = decodeURIComponent(encodedContent || "");
+    contentEl.dataset.original = currentContent;
 
-  // 원래 내용 백업(취소 누르면 되돌리기)
-  contentEl.dataset.original = currentContent;
-
-  // 댓글 내용을 input + 버튼으로 교체
-  contentEl.innerHTML = `
-    <div style="display:flex; gap:8px; align-items:center;">
-      <input type="text"
-             class="input"
-             id="inline-input-${commentId}"
-             value="${escapeHtml(currentContent)}"
-             style="flex:1;" />
-      <button class="mini-btn" onclick="saveInlineEdit(${commentId}, ${boardId})">저장</button>
-      <button class="mini-btn" onclick="cancelInlineEdit(${commentId})">취소</button>
-    </div>
-  `;
-
-  // 커서 자동 포커스
-  const input = document.getElementById(`inline-input-${commentId}`);
-  if (input) {
-    input.focus();
-    // 커서를 맨 뒤로
-    input.setSelectionRange(input.value.length, input.value.length);
-    }
+    contentEl.innerHTML = `
+      <div style="display:flex; gap:8px; align-items:center;">
+        <input type="text" class="input" id="inline-input-${commentId}"
+               value="${escapeHtml(currentContent)}" style="flex:1;" />
+        <button class="mini-btn" type="button" onclick="saveInlineEdit(${commentId}, ${boardId})">저장</button>
+        <button class="mini-btn" type="button" onclick="cancelInlineEdit(${commentId})">취소</button>
+      </div>
+    `;
   }
 
-  // 인라인 편집 취소(원래 내용으로 복구)
   function cancelInlineEdit(commentId) {
     const contentEl = document.getElementById(`comment-content-${commentId}`);
     if (!contentEl) return;
 
-  const original = contentEl.dataset.original || "";
-  contentEl.innerHTML = escapeHtml(original);
-
-  editingInlineCommentId = null;
+    const original = contentEl.dataset.original || "";
+    contentEl.innerHTML = escapeHtml(original);
+    editingInlineCommentId = null;
   }
 
-  // 인라인 편집 저장(PUT 요청)
   async function saveInlineEdit(commentId, boardId) {
-  const input = document.getElementById(`inline-input-${commentId}`);
-  if (!input) return;
+    const input = document.getElementById(`inline-input-${commentId}`);
+    if (!input) return;
 
-  const newContent = (input.value || "").trim();
-  if (!newContent) {
-    alert("내용을 입력해주세요!");
-    return;
+    const newContent = (input.value || "").trim();
+    if (!newContent) {
+      alert("내용을 입력해주세요!");
+      return;
+    }
+
+    const res = await apiFetch(`/api/comments/${commentId}`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ content: newContent })
+    });
+    if (!res) return;
+
+    editingInlineCommentId = null;
+    await loadComments(boardId);
   }
 
-  const res = await apiFetch(`/api/comments/${commentId}`, {
-    method: "PUT",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ content: newContent })
-  });
-  if (!res) return;
-
-  // 저장 성공 → 편집 모드 종료 후, 댓글 목록 새로고침
-  editingInlineCommentId = null;
-  await loadComments(boardId);
-  }
-
-
-async function deleteComment(commentId, boardId){
+  async function deleteComment(commentId, boardId){
     if(!confirm("댓글을 삭제할까요?")) return;
 
     const res = await apiFetch(`/api/comments/${commentId}`, { method: "DELETE" });
@@ -372,15 +362,10 @@ async function deleteComment(commentId, boardId){
     await loadComments(boardId);
   }
 
-
-  // inline onclick에서 사용
-  window.toggleMenu = toggleMenu;
-  window.submitComment = submitComment;
-  window.deleteComment = deleteComment;
-  window.startInlineEdit = startInlineEdit;
-  window.cancelInlineEdit = cancelInlineEdit;
-  window.saveInlineEdit = saveInlineEdit;
-
+  (async () => {
+    await loadMyContext();
+    await loadFeed();
+  })();
 </script>
 </body>
 </html>

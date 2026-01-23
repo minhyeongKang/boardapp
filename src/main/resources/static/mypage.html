@@ -22,9 +22,7 @@
       </button>
 
       <button class="icon-action" id="btnWrite" title="새 글 작성" type="button">
-        <svg viewBox="0 0 24 24">
-          <path d="M12 5v14M5 12h14"/>
-        </svg>
+        <svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>
       </button>
 
       <button class="icon-action" id="btnLogout" title="로그아웃" type="button">
@@ -80,6 +78,7 @@
     <div style="margin-top:18px;">
       <div class="page-title">내 게시글</div>
       <div id="mine" class="grid"></div>
+      <div id="emptyMine" class="empty" style="display:none;">작성한 게시글이 없습니다.</div>
     </div>
   </div>
 </main>
@@ -91,7 +90,6 @@
   const btnMain = document.getElementById("btnMain");
   const btnWrite = document.getElementById("btnWrite");
   const btnLogout = document.getElementById("btnLogout");
-
   btnMain.onclick = () => location.href = "/main.html";
   btnWrite.onclick = () => location.href = "/write.html";
   btnLogout.onclick = logout;
@@ -107,7 +105,12 @@
 
   const nicknameInput = document.getElementById("nicknameInput");
   const introInput = document.getElementById("introInput");
+
   const mineEl = document.getElementById("mine");
+  const emptyMineEl = document.getElementById("emptyMine");
+
+  let MY_USER_ID = null;
+  let editingInlineCommentId = null;
 
   function escapeHtml(str){
     return (str ?? "")
@@ -122,28 +125,12 @@
     return s ? String(s).replace("T"," ") : "";
   }
 
-  // 메뉴 토글/닫기
-  function toggleMenu(e, boardId) {
-    e.stopPropagation();
-
-    document.querySelectorAll(".card-menu").forEach(m => {
-      if (m.id !== "menu-" + boardId) m.style.display = "none";
-    });
-
-    const menu = document.getElementById("menu-" + boardId);
-    if (!menu) return;
-
-    menu.style.display = (menu.style.display === "block") ? "none" : "block";
-  }
-
-  document.addEventListener("click", () => {
-    document.querySelectorAll(".card-menu").forEach(m => m.style.display = "none");
-  });
-
   async function loadMe(){
     const res = await apiFetch("/api/users/me");
     if(!res) return;
     const me = await res.json();
+
+    MY_USER_ID = me.id ?? null;
 
     nicknameText.textContent = me.nickname;
     emailText.textContent = me.email;
@@ -153,7 +140,53 @@
     introInput.value = me.intro || "";
   }
 
-  function cardHtml(p){
+  function togglePostMenu(e, boardId) {
+    e.stopPropagation();
+    document.querySelectorAll(".card-menu").forEach(m => {
+      if (m.id !== "menu-" + boardId) m.style.display = "none";
+    });
+    const menu = document.getElementById("menu-" + boardId);
+    if (!menu) return;
+    menu.style.display = (menu.style.display === "block") ? "none" : "block";
+  }
+
+  function toggleCommentMenu(e, commentId) {
+    e.stopPropagation();
+    document.querySelectorAll(".comment-menu").forEach(m => {
+      if (m.id !== "c-menu-" + commentId) m.style.display = "none";
+    });
+    const menu = document.getElementById("c-menu-" + commentId);
+    if (!menu) return;
+    menu.style.display = (menu.style.display === "block") ? "none" : "block";
+  }
+
+  document.addEventListener("click", () => {
+    document.querySelectorAll(".card-menu").forEach(m => helpingHide(m));
+    document.querySelectorAll(".comment-menu").forEach(m => helpingHide(m));
+  });
+
+  function helpingHide(el){
+    if (el) el.style.display = "none";
+  }
+
+  async function toggleComments(boardId){
+    const wrap = document.getElementById(`comments-${boardId}`);
+    if(!wrap) return;
+
+    document.querySelectorAll(".comments").forEach(x => {
+      if (x.id !== `comments-${boardId}`) x.style.display = "none";
+    });
+
+    const hidden = (wrap.style.display === "" || wrap.style.display === "none");
+    if (hidden) {
+      wrap.style.display = "block";
+      await loadComments(boardId);
+    } else {
+      wrap.style.display = "none";
+    }
+  }
+
+  function postCardHtml(p){
     const editUrl = "/edit.html?boardId=" + encodeURIComponent(p.id);
 
     return `
@@ -168,21 +201,9 @@
           </div>
 
           <div style="position:relative;">
-            <button type="button"
-                    class="more-btn"
-                    onclick="toggleMenu(event, ${p.id})"
-                    title="더보기"
-                    aria-label="더보기">⋮</button>
-
-            <div id="menu-${p.id}" class="card-menu"
-                 style="display:none; position:absolute; right:0; top:32px;
-                        background:#fff; border:1px solid var(--line);
-                        border-radius:12px; box-shadow:var(--shadow);
-                        overflow:hidden; z-index:10; min-width:120px;">
-              <button type="button"
-                      style="padding:10px 14px; width:100%; border:0; background:none;
-                             text-align:left; font-weight:700; cursor:pointer;"
-                      onclick="location.href='${editUrl}'">수정</button>
+            <button type="button" class="more-btn" onclick="togglePostMenu(event, ${p.id})" title="더보기">⋮</button>
+            <div id="menu-${p.id}" class="card-menu">
+              <button type="button" class="menu-item" onclick="location.href='${editUrl}'">수정</button>
             </div>
           </div>
         </div>
@@ -192,9 +213,28 @@
           <p class="content">${escapeHtml(p.content)}</p>
         </div>
 
-        <div class="card-footer">
-          <span>좋아요</span>
-          <span>댓글</span>
+        <div class="ig-actions">
+          <button class="ig-action-btn" type="button" title="좋아요"
+                  onclick="alert('좋아요는 다음 단계로 구현할게요')">
+            <svg viewBox="0 0 24 24">
+              <path d="M20.8 4.6c-1.7-1.7-4.5-1.7-6.2 0L12 7.2 9.4 4.6c-1.7-1.7-4.5-1.7-6.2 0s-1.7 4.5 0 6.2L12 20.6l8.8-8.8c1.7-1.7 1.7-4.5 0-6.2z"/>
+            </svg>
+          </button>
+
+          <button class="ig-action-btn" type="button" title="댓글" onclick="toggleComments(${p.id})">
+            <svg viewBox="0 0 24 24">
+              <path d="M21 15a4 4 0 0 1-4 4H8l-5 3V7a4 4 0 0 1 4-4h10a4 4 0 0 1 4 4z"/>
+            </svg>
+          </button>
+        </div>
+
+        <div class="comments" id="comments-${p.id}">
+          <div class="comment-list" id="commentList-${p.id}">댓글 불러오는 중...</div>
+
+          <div class="comment-form">
+            <input type="text" class="input" id="commentInput-${p.id}" placeholder="댓글을 입력하세요" />
+            <button class="pill-btn" type="button" onclick="submitComment(${p.id})">등록</button>
+          </div>
         </div>
       </article>
     `;
@@ -203,8 +243,157 @@
   async function loadMine(){
     const res = await apiFetch("/api/boards/mine");
     if(!res) return;
+
     const list = await res.json();
-    mineEl.innerHTML = list.map(cardHtml).join("");
+    if(!list || list.length === 0){
+      emptyMineEl.style.display = "block";
+      mineEl.innerHTML = "";
+      return;
+    }
+
+    emptyMineEl.style.display = "none";
+    mineEl.innerHTML = list.map(postCardHtml).join("");
+  }
+
+  async function loadComments(boardId){
+    const el = document.getElementById(`commentList-${boardId}`);
+    if(!el) return;
+
+    const res = await apiFetch(`/api/boards/${boardId}/comments`);
+    if(!res) return;
+
+    const list = await res.json();
+    if(!list || list.length === 0){
+      el.innerHTML = `<div class="muted">아직 댓글이 없어요</div>`;
+      return;
+    }
+
+    el.innerHTML = list.map(c => {
+      const mine = (MY_USER_ID && c.userId === MY_USER_ID);
+
+      const profileUrl = mine
+        ? "/mypage.html"
+        : "/user.html?userId=" + encodeURIComponent(c.userId);
+
+      const menuHtml = mine ? `
+        <div style="position:relative;">
+          <button type="button"
+                  class="more-btn"
+                  onclick="toggleCommentMenu(event, ${c.id})"
+                  title="더보기">⋮</button>
+          <div id="c-menu-${c.id}" class="comment-menu">
+            <button type="button" class="menu-item"
+                    onclick="startInlineEdit(${c.id}, ${boardId}, '${encodeURIComponent(c.content || "")}')">수정</button>
+            <button type="button" class="menu-item"
+                    onclick="deleteComment(${c.id}, ${boardId})">삭제</button>
+          </div>
+        </div>
+      ` : `<div style="width:28px;height:28px;"></div>`;
+
+      return `
+        <div class="comment-item" id="comment-${c.id}">
+          <div class="comment-body">
+            <div class="comment-top">
+              <div style="display:flex; align-items:center; gap:8px;">
+                <a href="${profileUrl}"
+                   class="user-link"
+                   style="font-weight:800;">
+                  ${escapeHtml(c.nickname || "USER")}
+                </a>
+                <span class="muted">${escapeHtml(fmtDate(c.createdAt))}</span>
+              </div>
+              ${menuHtml}
+            </div>
+
+            <div class="comment-content" id="comment-content-${c.id}">
+              ${escapeHtml(c.content || "")}
+            </div>
+          </div>
+        </div>
+      `;
+    }).join("");
+  }
+
+  async function submitComment(boardId){
+    const input = document.getElementById(`commentInput-${boardId}`);
+    if(!input) return;
+
+    const content = (input.value || "").trim();
+    if(!content){
+      alert("댓글 내용을 입력하세요!");
+      return;
+    }
+
+    const res = await apiFetch(`/api/boards/${boardId}/comments`, {
+      method: "POST",
+      body: JSON.stringify({ content })
+    });
+    if(!res) return;
+
+    input.value = "";
+    await loadComments(boardId);
+  }
+
+  function startInlineEdit(commentId, boardId, encodedContent) {
+    if (editingInlineCommentId && editingInlineCommentId !== commentId) {
+      alert("다른 댓글을 수정 중이에요. 먼저 저장 또는 취소해주세요.");
+      return;
+    }
+    editingInlineCommentId = commentId;
+
+    const contentEl = document.getElementById(`comment-content-${commentId}`);
+    if (!contentEl) return;
+
+    const currentContent = decodeURIComponent(encodedContent || "");
+    contentEl.dataset.original = currentContent;
+
+    contentEl.innerHTML = `
+      <div style="display:flex; gap:8px; align-items:center;">
+        <input type="text" class="input" id="inline-input-${commentId}"
+               value="${escapeHtml(currentContent)}" style="flex:1;" />
+        <button class="mini-btn" type="button" onclick="saveInlineEdit(${commentId}, ${boardId})">저장</button>
+        <button class="mini-btn" type="button" onclick="cancelInlineEdit(${commentId})">취소</button>
+      </div>
+    `;
+  }
+
+  function cancelInlineEdit(commentId) {
+    const contentEl = document.getElementById(`comment-content-${commentId}`);
+    if (!contentEl) return;
+
+    const original = contentEl.dataset.original || "";
+    contentEl.innerHTML = escapeHtml(original);
+    editingInlineCommentId = null;
+  }
+
+  async function saveInlineEdit(commentId, boardId) {
+    const input = document.getElementById(`inline-input-${commentId}`);
+    if (!input) return;
+
+    const newContent = (input.value || "").trim();
+    if (!newContent) {
+      alert("내용을 입력해주세요!");
+      return;
+    }
+
+    const res = await apiFetch(`/api/comments/${commentId}`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ content: newContent })
+    });
+    if (!res) return;
+
+    editingInlineCommentId = null;
+    await loadComments(boardId);
+  }
+
+  async function deleteComment(commentId, boardId){
+    if(!confirm("댓글을 삭제할까요?")) return;
+
+    const res = await apiFetch(`/api/comments/${commentId}`, { method: "DELETE" });
+    if(!res) return;
+
+    await loadComments(boardId);
   }
 
   btnEdit.onclick = () => editBox.style.display = "block";
@@ -224,11 +413,19 @@
     await loadMe();
   };
 
-  loadMe();
-  loadMine();
+  (async () => {
+    await loadMe();
+    await loadMine();
+  })();
 
-  // inline onclick에서 사용
-  window.toggleMenu = toggleMenu;
+  window.togglePostMenu = togglePostMenu;
+  window.toggleCommentMenu = toggleCommentMenu;
+  window.toggleComments = toggleComments;
+  window.submitComment = submitComment;
+  window.startInlineEdit = startInlineEdit;
+  window.cancelInlineEdit = cancelInlineEdit;
+  window.saveInlineEdit = saveInlineEdit;
+  window.deleteComment = deleteComment;
 </script>
 </body>
 </html>
