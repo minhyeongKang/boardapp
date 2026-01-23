@@ -15,4 +15,6 @@ public class BoardResponseDto {
     private String content;
     private LocalDateTime createdAt;
     private LocalDateTime modifiedAt;
+    private Long likeCount;     // 추가
+    private Boolean likedByMe;  // 추가
 }
