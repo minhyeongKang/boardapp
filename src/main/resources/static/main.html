@@ -65,6 +65,11 @@
 
   let MY_USER_ID = null;
 
+  // 게시글(boardId)별로 지금 수정 중인 댓글 id를 저장하는 곳
+  // 예: editingCommentId[1] = 123  (1번 게시글에서 123번 댓글 수정 중)
+  const editingCommentId = {};
+
+
   function fmtDate(s){
     if(!s) return "";
     return String(s).replace("T"," ");
@@ -162,9 +167,12 @@
           <div class="comment-list" id="commentList-${p.id}">댓글 불러오는 중...</div>
 
           <div class="comment-form">
-            <input type="text" class="input" id="commentInput-${p.id}" placeholder="댓글을 입력하세요" />
-            <button class="pill-btn" onclick="submitComment(${p.id})">등록</button>
-          </div>
+              <input type="text" class="input" id="commentInput-${p.id}" placeholder="댓글을 입력하세요" />
+
+              <button class="pill-btn" id="commentSubmit-${p.id}" onclick="submitComment(${p.id})">등록</button>
+
+              <button class="pill-btn" id="commentCancel-${p.id}" onclick="cancelEdit(${p.id})" style="display:none;">취소</button>
+           </div>
         </div>
 
 
@@ -217,18 +225,28 @@
     }
 
     el.innerHTML = list.map(c => {
-      const mine = (MY_USER_ID && c.userId === MY_USER_ID);
-      return `
-        <div class="comment-item">
-          <div class="comment-top">
-            <b>${escapeHtml(c.nickname || "USER")}</b>
-            <span class="muted">${fmtDate(c.createdAt)}</span>
-          </div>
-          <div class="comment-content">${escapeHtml(c.content || "")}</div>
-          ${mine ? `<button class="mini-btn" onclick="deleteComment(${c.id}, ${boardId})">삭제</button>` : ``}
-        </div>
-      `;
-    }).join("");
+  const mine = (MY_USER_ID && c.userId === MY_USER_ID);
+  return `
+    <div class="comment-item" id="comment-${c.id}">
+      <div class="comment-top">
+        <b>${escapeHtml(c.nickname || "USER")}</b>
+        <span class="muted">${fmtDate(c.createdAt)}</span>
+      </div>
+
+      <div class="comment-content" id="comment-content-${c.id}">
+        ${escapeHtml(c.content || "")}
+      </div>
+
+      ${mine ? `
+        <button class="mini-btn"
+                onclick="startInlineEdit(${c.id}, ${boardId}, '${encodeURIComponent(c.content || "")}')">수정</button>
+        <button class="mini-btn"
+                onclick="deleteComment(${c.id}, ${boardId})">삭제</button>
+      ` : ``}
+    </div>
+  `;
+  }).join("");
+
   }
 
   async function submitComment(boardId){
@@ -241,6 +259,24 @@
       return;
     }
 
+    // 지금 이 게시글이 "수정 모드"인지 확인
+    const commentId = editingCommentId[boardId];
+
+    // 1) 수정 모드라면 → PUT 요청
+    if (commentId) {
+        const res = await apiFetch(`/api/comments/${commentId}`, {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ content })
+        });
+    if(!res) return;
+
+    // 수정 끝났으니 원상복구
+    cancelEdit(boardId);
+    await loadComments(boardId);
+    return;
+    }
+
     const res = await apiFetch(`/api/boards/${boardId}/comments`, {
       method: "POST",
       body: JSON.stringify({ content })
@@ -250,8 +286,84 @@
     input.value = "";
     await loadComments(boardId);
   }
+  // 지금 어떤 댓글이 편집 중인지 저장 (동시에 여러 개 열리는 것 방지)
+  let editingInlineCommentId = null;
 
-  async function deleteComment(commentId, boardId){
+  // 댓글 자리에서 인라인 편집 시작
+  function startInlineEdit(commentId, boardId, encodedContent) {
+    // 이미 다른 댓글 수정 중이면 막기(원하면 허용으로 바꿀 수도 있음)
+    if (editingInlineCommentId && editingInlineCommentId !== commentId) {
+      alert("다른 댓글을 수정 중이에요. 먼저 저장 또는 취소해주세요.");
+      return;
+    }
+  editingInlineCommentId = commentId;
+
+  const contentEl = document.getElementById(`comment-content-${commentId}`);
+  if (!contentEl) return;
+
+  const currentContent = decodeURIComponent(encodedContent || "");
+
+  // 원래 내용 백업(취소 누르면 되돌리기)
+  contentEl.dataset.original = currentContent;
+
+  // 댓글 내용을 input + 버튼으로 교체
+  contentEl.innerHTML = `
+    <div style="display:flex; gap:8px; align-items:center;">
+      <input type="text"
+             class="input"
+             id="inline-input-${commentId}"
+             value="${escapeHtml(currentContent)}"
+             style="flex:1;" />
+      <button class="mini-btn" onclick="saveInlineEdit(${commentId}, ${boardId})">저장</button>
+      <button class="mini-btn" onclick="cancelInlineEdit(${commentId})">취소</button>
+    </div>
+  `;
+
+  // 커서 자동 포커스
+  const input = document.getElementById(`inline-input-${commentId}`);
+  if (input) {
+    input.focus();
+    // 커서를 맨 뒤로
+    input.setSelectionRange(input.value.length, input.value.length);
+    }
+  }
+
+  // 인라인 편집 취소(원래 내용으로 복구)
+  function cancelInlineEdit(commentId) {
+    const contentEl = document.getElementById(`comment-content-${commentId}`);
+    if (!contentEl) return;
+
+  const original = contentEl.dataset.original || "";
+  contentEl.innerHTML = escapeHtml(original);
+
+  editingInlineCommentId = null;
+  }
+
+  // 인라인 편집 저장(PUT 요청)
+  async function saveInlineEdit(commentId, boardId) {
+  const input = document.getElementById(`inline-input-${commentId}`);
+  if (!input) return;
+
+  const newContent = (input.value || "").trim();
+  if (!newContent) {
+    alert("내용을 입력해주세요!");
+    return;
+  }
+
+  const res = await apiFetch(`/api/comments/${commentId}`, {
+    method: "PUT",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ content: newContent })
+  });
+  if (!res) return;
+
+  // 저장 성공 → 편집 모드 종료 후, 댓글 목록 새로고침
+  editingInlineCommentId = null;
+  await loadComments(boardId);
+  }
+
+
+async function deleteComment(commentId, boardId){
     if(!confirm("댓글을 삭제할까요?")) return;
 
     const res = await apiFetch(`/api/comments/${commentId}`, { method: "DELETE" });
@@ -265,6 +377,9 @@
   window.toggleMenu = toggleMenu;
   window.submitComment = submitComment;
   window.deleteComment = deleteComment;
+  window.startInlineEdit = startInlineEdit;
+  window.cancelInlineEdit = cancelInlineEdit;
+  window.saveInlineEdit = saveInlineEdit;
 
 </script>
 </body>
