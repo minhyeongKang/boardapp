@@ -66,6 +66,7 @@ public class CommentRepository {
     }
 
     public int delete(Long commentId, Long userId) {
+        // 내 댓글만 삭제되도록 ID + USER_ID 둘 다 조건으로 건다
         String sql = "DELETE FROM COMMENTS WHERE ID = ? AND USER_ID = ?";
         return jdbc.update(sql, commentId, userId);
     }

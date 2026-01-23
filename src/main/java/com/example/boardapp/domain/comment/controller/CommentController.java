@@ -47,14 +47,16 @@ public class CommentController {
         return ResponseEntity.ok().build();
     }
 
-    // 댓글 삭제 (본인만)
+    // 댓글 삭제 API를 받는 컨트롤러
+    // URL 예: DELETE /api/comments/123
     @DeleteMapping("/api/comments/{commentId}")
     public ResponseEntity<Void> delete(
-            @PathVariable Long commentId,
-            @AuthenticationPrincipal UserDetailsImpl userDetails
+            @PathVariable Long commentId,                 // 주소에 들어있는 댓글 번호
+            @AuthenticationPrincipal UserDetailsImpl userDetails // 로그인한 사용자 정보
     ) {
-        Long userId = userDetails.getUser().getId();
-        commentService.delete(commentId, userId);
-        return ResponseEntity.ok().build();
+        Long userId = userDetails.getUser().getId();     // 로그인한 사람의 ID 꺼내기
+        commentService.delete(commentId, userId);         // 서비스에 "삭제해줘" 부탁하기
+        return ResponseEntity.ok().build();               // 성공이면 200 OK
     }
+
 }
