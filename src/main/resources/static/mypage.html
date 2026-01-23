@@ -75,11 +75,13 @@
       </div>
     </section>
 
-    <div style="margin-top:18px;">
-      <div class="page-title">내 게시글</div>
-      <div id="mine" class="grid"></div>
-      <div id="emptyMine" class="empty" style="display:none;">작성한 게시글이 없습니다.</div>
+    <div style="margin-top:18px; display:flex; align-items:center; justify-content:space-between;">
+      <div class="page-title" style="margin:0;">내 게시글</div>
+      <button class="pill-btn" id="btnRefresh" type="button">새로고침</button>
     </div>
+
+    <div id="mine" class="grid"></div>
+    <div id="emptyMine" class="empty" style="display:none;">작성한 게시글이 없습니다.</div>
   </div>
 </main>
 
@@ -90,9 +92,12 @@
   const btnMain = document.getElementById("btnMain");
   const btnWrite = document.getElementById("btnWrite");
   const btnLogout = document.getElementById("btnLogout");
+  const btnRefresh = document.getElementById("btnRefresh");
+
   btnMain.onclick = () => location.href = "/main.html";
   btnWrite.onclick = () => location.href = "/write.html";
   btnLogout.onclick = logout;
+  btnRefresh.onclick = loadMine;
 
   const btnEdit = document.getElementById("btnEdit");
   const btnCancelEdit = document.getElementById("btnCancelEdit");
@@ -140,34 +145,53 @@
     introInput.value = me.intro || "";
   }
 
+  btnEdit.onclick = () => editBox.style.display = "block";
+  btnCancelEdit.onclick = () => editBox.style.display = "none";
+
+  btnSaveEdit.onclick = async () => {
+    const res = await apiFetch("/api/users/me", {
+      method:"PUT",
+      body:JSON.stringify({
+        nickname: nicknameInput.value,
+        intro: introInput.value
+      })
+    });
+    if(!res) return;
+
+    editBox.style.display = "none";
+    await loadMe();
+  };
+
   function togglePostMenu(e, boardId) {
     e.stopPropagation();
+
     document.querySelectorAll(".card-menu").forEach(m => {
       if (m.id !== "menu-" + boardId) m.style.display = "none";
     });
+
     const menu = document.getElementById("menu-" + boardId);
     if (!menu) return;
+
     menu.style.display = (menu.style.display === "block") ? "none" : "block";
   }
 
   function toggleCommentMenu(e, commentId) {
     e.stopPropagation();
+
     document.querySelectorAll(".comment-menu").forEach(m => {
       if (m.id !== "c-menu-" + commentId) m.style.display = "none";
     });
+
     const menu = document.getElementById("c-menu-" + commentId);
     if (!menu) return;
+
     menu.style.display = (menu.style.display === "block") ? "none" : "block";
   }
 
   document.addEventListener("click", () => {
-    document.querySelectorAll(".card-menu").forEach(m => helpingHide(m));
-    document.querySelectorAll(".comment-menu").forEach(m => helpingHide(m));
+    document.querySelectorAll(".card-menu").forEach(m => m.style.display = "none");
+    document.querySelectorAll(".comment-menu").forEach(m => m.style.display = "none");
   });
-
-  function helpingHide(el){
-    if (el) el.style.display = "none";
-  }
 
   async function toggleComments(boardId){
     const wrap = document.getElementById(`comments-${boardId}`);
@@ -184,6 +208,21 @@
     } else {
       wrap.style.display = "none";
     }
+  }
+
+  async function deleteBoard(boardId){
+    if(!confirm("게시글을 삭제할까요?")) return;
+
+    const res = await apiFetch(`/api/boards/${boardId}`, { method: "DELETE" });
+    if(!res) return;
+
+    if(!res.ok){
+      const t = await res.text().catch(() => "");
+      alert("삭제 실패: " + (t || res.status));
+      return;
+    }
+
+    await loadMine();
   }
 
   function postCardHtml(p){
@@ -204,6 +243,7 @@
             <button type="button" class="more-btn" onclick="togglePostMenu(event, ${p.id})" title="더보기">⋮</button>
             <div id="menu-${p.id}" class="card-menu">
               <button type="button" class="menu-item" onclick="location.href='${editUrl}'">수정</button>
+              <button type="button" class="menu-item" style="color:#dc2626;" onclick="deleteBoard(${p.id})">삭제</button>
             </div>
           </div>
         </div>
@@ -396,23 +436,6 @@
     await loadComments(boardId);
   }
 
-  btnEdit.onclick = () => editBox.style.display = "block";
-  btnCancelEdit.onclick = () => editBox.style.display = "none";
-
-  btnSaveEdit.onclick = async () => {
-    const res = await apiFetch("/api/users/me", {
-      method:"PUT",
-      body:JSON.stringify({
-        nickname: nicknameInput.value,
-        intro: introInput.value
-      })
-    });
-    if(!res) return;
-
-    editBox.style.display = "none";
-    await loadMe();
-  };
-
   (async () => {
     await loadMe();
     await loadMine();
@@ -426,6 +449,7 @@
   window.cancelInlineEdit = cancelInlineEdit;
   window.saveInlineEdit = saveInlineEdit;
   window.deleteComment = deleteComment;
+  window.deleteBoard = deleteBoard;
 </script>
 </body>
 </html>

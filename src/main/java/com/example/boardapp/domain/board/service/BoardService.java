@@ -40,14 +40,12 @@ public class BoardService {
         return boardRepository.findAllByUserIdDesc(userId);
     }
 
-    // 게시글 단건 조회 (수정 화면에서 사용)
     public BoardResponseDto findOne(Long boardId) {
         Board board = boardRepository.findById(boardId)
                 .orElseThrow(() -> new RuntimeException("게시글을 찾을 수 없습니다."));
         return toResponse(board);
     }
 
-    // 게시글 수정 (내 글만 가능)
     public void update(Long boardId, Long userId, BoardRequestDto req) {
         Board board = boardRepository.findById(boardId)
                 .orElseThrow(() -> new RuntimeException("게시글을 찾을 수 없습니다."));
@@ -62,6 +60,20 @@ public class BoardService {
         int updated = boardRepository.update(board);
         if (updated == 0) {
             throw new RuntimeException("수정에 실패했습니다.");
+        }
+    }
+
+    public void delete(Long boardId, Long userId) {
+        Board board = boardRepository.findById(boardId)
+                .orElseThrow(() -> new RuntimeException("게시글을 찾을 수 없습니다."));
+
+        if (!board.getUserId().equals(userId)) {
+            throw new RuntimeException("삭제 권한이 없습니다.");
+        }
+
+        int deleted = boardRepository.deleteById(boardId);
+        if (deleted == 0) {
+            throw new RuntimeException("삭제에 실패했습니다.");
         }
     }
 

@@ -44,13 +44,11 @@ public class BoardController {
         return ResponseEntity.ok(boardService.findByUserId(userId));
     }
 
-    // 게시글 단건 조회 (수정 화면에서 사용)
     @GetMapping("/{boardId}")
     public ResponseEntity<BoardResponseDto> getOne(@PathVariable Long boardId) {
         return ResponseEntity.ok(boardService.findOne(boardId));
     }
 
-    // 게시글 수정 (내 글만 가능)
     @PutMapping("/{boardId}")
     public ResponseEntity<Void> update(
             @PathVariable Long boardId,
@@ -60,5 +58,15 @@ public class BoardController {
         Long userId = userDetails.getUser().getId();
         boardService.update(boardId, userId, req);
         return ResponseEntity.ok().build();
+    }
+
+    @DeleteMapping("/{boardId}")
+    public ResponseEntity<Void> delete(
+            @PathVariable Long boardId,
+            @AuthenticationPrincipal UserDetailsImpl userDetails
+    ) {
+        Long userId = userDetails.getUser().getId();
+        boardService.delete(boardId, userId);
+        return ResponseEntity.noContent().build();
     }
 }
