@@ -428,8 +428,8 @@ input:focus, textarea:focus{
 .ig-actions{
   display:flex;
   gap:10px;
-  padding:10px 16px 12px;
-  border-top:1px solid var(--line);
+  padding:0;
+  border-top:none;
 }
 
 .ig-action-btn{
@@ -565,3 +565,52 @@ input:focus, textarea:focus{
   font-size:12px;
 }
 .mini-btn:hover{ background:#fafafa; }
+
+.card { position: relative; }
+
+.heart-layer{
+  position:absolute;
+  inset:0;
+  pointer-events:none;
+  overflow:hidden;
+  border-radius: var(--radius);
+}
+
+.floating-heart{
+  position:absolute;
+  font-size: 34px;
+  transform: translate(-50%, -50%) scale(1);
+  opacity: 0;
+  animation: heart-float 650ms ease-out forwards;
+  filter: drop-shadow(0 6px 10px rgba(0,0,0,0.25));
+}
+
+@keyframes heart-float{
+  0%   { opacity:0; transform: translate(-50%, -30%) scale(0.8); }
+  15%  { opacity:1; transform: translate(-50%, -50%) scale(1.15); }
+  100% { opacity:0; transform: translate(-50%, -160px) scale(1.0); }
+}
+
+.ig-action-btn.liked svg{
+  stroke: #e11d48; /* 핑크/레드 계열 */
+}
+
+.ig-action-btn.liked{
+  color:#e11d48;
+}
+
+.like-count{
+  font-size: 12px;
+  color: var(--muted);
+  opacity: 0.85;
+  font-weight: 700;
+  line-height: 1;
+}
+
+.card-footer{
+  border-top: 1px solid var(--line);
+  padding: 10px 16px 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}

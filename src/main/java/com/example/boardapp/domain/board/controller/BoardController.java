@@ -29,25 +29,35 @@ public class BoardController {
     }
 
     @GetMapping
-    public ResponseEntity<List<BoardResponseDto>> list() {
-        return ResponseEntity.ok(boardService.findAll());
+    public ResponseEntity<List<BoardResponseDto>> list(@AuthenticationPrincipal UserDetailsImpl userDetails) {
+        Long userId = userDetails.getUser().getId();
+        return ResponseEntity.ok(boardService.findAll(userId));
     }
 
     @GetMapping("/mine")
     public ResponseEntity<List<BoardResponseDto>> mine(@AuthenticationPrincipal UserDetailsImpl userDetails) {
-        Long userId = userDetails.getUser().getId();
-        return ResponseEntity.ok(boardService.findMine(userId));
+        Long viewerUserId = userDetails.getUser().getId();
+        return ResponseEntity.ok(boardService.findMine(viewerUserId, viewerUserId));
     }
 
     @GetMapping("/user/id/{userId}")
-    public ResponseEntity<List<BoardResponseDto>> postsByUserId(@PathVariable Long userId) {
-        return ResponseEntity.ok(boardService.findByUserId(userId));
+    public ResponseEntity<List<BoardResponseDto>> postsByUserId(
+            @PathVariable Long userId,
+            @AuthenticationPrincipal UserDetailsImpl userDetails
+    ) {
+        Long viewerUserId = userDetails.getUser().getId();
+        return ResponseEntity.ok(boardService.findByUserId(userId, viewerUserId));
     }
 
     @GetMapping("/{boardId}")
-    public ResponseEntity<BoardResponseDto> getOne(@PathVariable Long boardId) {
-        return ResponseEntity.ok(boardService.findOne(boardId));
+    public ResponseEntity<BoardResponseDto> getOne(
+            @PathVariable Long boardId,
+            @AuthenticationPrincipal UserDetailsImpl userDetails
+    ) {
+        Long viewerUserId = userDetails.getUser().getId();
+        return ResponseEntity.ok(boardService.findOne(boardId, viewerUserId));
     }
+
 
     @PutMapping("/{boardId}")
     public ResponseEntity<Void> update(

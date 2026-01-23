@@ -166,7 +166,8 @@
     ` : `<div style="width:28px;height:28px;"></div>`;
 
     return `
-      <article class="card">
+    <article class="card" data-board-id="${p.id}">
+      <div class="heart-layer" aria-hidden="true"></div>
         <div class="card-header" style="display:flex; justify-content:space-between; align-items:flex-start;">
           <div style="display:flex; gap:12px; align-items:center;">
             <div class="avatar"></div>
@@ -187,20 +188,28 @@
           <p class="content">${escapeHtml(p.content || "")}</p>
         </div>
 
-        <div class="ig-actions">
-          <button class="ig-action-btn" type="button" title="좋아요"
-                  onclick="alert('좋아요는 다음 단계로 구현할게요')">
-            <svg viewBox="0 0 24 24">
-              <path d="M20.8 4.6c-1.7-1.7-4.5-1.7-6.2 0L12 7.2 9.4 4.6c-1.7-1.7-4.5-1.7-6.2 0s-1.7 4.5 0 6.2L12 20.6l8.8-8.8c1.7-1.7 1.7-4.5 0-6.2z"/>
-            </svg>
-          </button>
+        <div class="card-footer">
+          <div class="like-count" data-like-count="1">
+            좋아요 ${p.likeCount ?? 0}개
+          </div>
 
-          <button class="ig-action-btn" type="button" title="댓글" onclick="toggleComments(${p.id})">
-            <svg viewBox="0 0 24 24">
-              <path d="M21 15a4 4 0 0 1-4 4H8l-5 3V7a4 4 0 0 1 4-4h10a4 4 0 0 1 4 4z"/>
-            </svg>
-          </button>
+          <div class="ig-actions">
+            <button class="ig-action-btn ${p.likedByMe ? "liked" : ""}" type="button"
+                    title="좋아요" data-like-btn="1">
+              <svg viewBox="0 0 24 24">
+                <path d="M20.8 4.6c-1.7-1.7-4.5-1.7-6.2 0L12 7.2 9.4 4.6c-1.7-1.7-4.5-1.7-6.2 0s-1.7 4.5 0 6.2L12 20.6l8.8-8.8c1.7-1.7 1.7-4.5 0-6.2z"/>
+              </svg>
+            </button>
+
+            <button class="ig-action-btn" type="button" title="댓글" onclick="toggleComments(${p.id})">
+              <svg viewBox="0 0 24 24">
+                <path d="M21 15a4 4 0 0 1-4 4H8l-5 3V7a4 4 0 0 1 4-4h10a4 4 0 0 1 4 4z"/>
+              </svg>
+            </button>
+          </div>
         </div>
+
+
 
         <div class="comments" id="comments-${p.id}">
           <div class="comment-list" id="commentList-${p.id}">댓글 불러오는 중...</div>
@@ -370,6 +379,101 @@
 
     await loadComments(boardId);
   }
+
+    function spawnHeart(cardEl, clientX, clientY){
+      const layer = cardEl.querySelector(".heart-layer");
+      if(!layer) return;
+
+      const rect = layer.getBoundingClientRect();
+      const x = clientX - rect.left;
+      const y = clientY - rect.top;
+
+      const heart = document.createElement("div");
+      heart.className = "floating-heart";
+      heart.textContent = "❤";
+
+      const drift = (Math.random() * 40) - 20;
+      heart.style.left = `${x}px`;
+      heart.style.top = `${y}px`;
+      heart.style.transform = `translate(-50%, -50%) translateX(${drift}px) scale(1)`;
+
+      layer.appendChild(heart);
+      heart.addEventListener("animationend", () => heart.remove());
+    }
+
+    async function requestLikeToggle(boardId, wantLike){
+      const method = wantLike ? "POST" : "DELETE";
+      const res = await apiFetch(`/api/boards/${boardId}/likes`, { method });
+      if(!res) return null;
+
+      return await res.json(); // { boardId, likeCount, likedByMe }
+    }
+
+    function applyLikeUi(cardEl, likedByMe, likeCount){
+      const btn = cardEl.querySelector('[data-like-btn="1"]');
+      const cntEl = cardEl.querySelector('[data-like-count="1"]');
+
+      if(btn){
+        btn.classList.toggle("liked", !!likedByMe);
+      }
+      if(cntEl){
+        cntEl.textContent = `좋아요 ${likeCount ?? 0}개`;
+      }
+    }
+
+    const feedRoot = document.getElementById("feed");
+    if (!feedRoot) throw new Error("#feed not found");
+
+    // 좋아요 버튼 클릭(토글)
+    feedRoot.addEventListener("click", async (e) => {
+      const btn = e.target.closest('[data-like-btn="1"]');
+      if(!btn) return;
+
+      const card = e.target.closest(".card");
+      if(!card) return;
+
+      const boardId = Number(card.dataset.boardId);
+      const currentlyLiked = btn.classList.contains("liked");
+      const wantLike = !currentlyLiked;
+
+      // 좋아요가 되는 순간에만 하트
+      if(wantLike){
+        const r = btn.getBoundingClientRect();
+        spawnHeart(card, r.left + r.width/2, r.top + r.height/2);
+      }
+
+      const data = await requestLikeToggle(boardId, wantLike);
+      if(!data) return;
+
+      applyLikeUi(card, data.likedByMe, data.likeCount);
+    });
+
+    // 게시글 더블클릭(무조건 좋아요 ON)
+    feedRoot.addEventListener("dblclick", async (e) => {
+      const body = e.target.closest(".card-body");
+      if(!body) return;
+      e.preventDefault();
+
+      const card = e.target.closest(".card");
+      if(!card) return;
+
+      const btn = card.querySelector('[data-like-btn="1"]');
+      const alreadyLiked = btn && btn.classList.contains("liked");
+
+      // 이미 좋아요면: 하트만 띄우고 API 호출은 생략(선택)
+      if(alreadyLiked){
+        spawnHeart(card, e.clientX, e.clientY);
+        return;
+      }
+
+      const boardId = Number(card.dataset.boardId);
+      spawnHeart(card, e.clientX, e.clientY);
+
+      const data = await requestLikeToggle(boardId, true);
+      if(!data) return;
+
+      applyLikeUi(card, data.likedByMe, data.likeCount);
+    });
 
   (async () => {
     await loadMyContext();

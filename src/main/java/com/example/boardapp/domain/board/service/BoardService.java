@@ -4,6 +4,7 @@ import com.example.boardapp.domain.board.dto.BoardRequestDto;
 import com.example.boardapp.domain.board.dto.BoardResponseDto;
 import com.example.boardapp.domain.board.entity.Board;
 import com.example.boardapp.domain.board.repository.BoardRepository;
+import com.example.boardapp.domain.like.repository.LikeRepository;
 import com.example.boardapp.domain.user.entity.User;
 import com.example.boardapp.domain.user.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
@@ -17,6 +18,7 @@ public class BoardService {
 
     private final BoardRepository boardRepository;
     private final UserRepository userRepository;
+    private final LikeRepository likeRepository;
 
     public void create(Long userId, BoardRequestDto req) {
         Board b = new Board();
@@ -26,24 +28,28 @@ public class BoardService {
         boardRepository.save(b);
     }
 
-    public List<BoardResponseDto> findAll() {
-        List<Board> boards = boardRepository.findAllDesc();
-        return boards.stream().map(this::toResponse).toList();
+    public List<BoardResponseDto> findAll(Long viewerUserId) {
+        return boardRepository.findAllDesc().stream()
+                .map(b -> toResponse(b, viewerUserId))
+                .toList();
     }
 
-    public List<BoardResponseDto> findMine(Long userId) {
-        List<Board> boards = boardRepository.findByUserIdDesc(userId);
-        return boards.stream().map(this::toResponse).toList();
+    public List<BoardResponseDto> findMine(Long ownerUserId, Long viewerUserId) {
+        return boardRepository.findByUserIdDesc(ownerUserId).stream()
+                .map(b -> toResponse(b, viewerUserId))
+                .toList();
     }
 
-    public List<BoardResponseDto> findByUserId(Long userId) {
-        return boardRepository.findAllByUserIdDesc(userId);
+    public List<BoardResponseDto> findByUserId(Long ownerUserId, Long viewerUserId) {
+        return boardRepository.findByUserIdDesc(ownerUserId).stream()
+                .map(b -> toResponse(b, viewerUserId))
+                .toList();
     }
 
-    public BoardResponseDto findOne(Long boardId) {
+    public BoardResponseDto findOne(Long boardId, Long viewerUserId) {
         Board board = boardRepository.findById(boardId)
                 .orElseThrow(() -> new RuntimeException("게시글을 찾을 수 없습니다."));
-        return toResponse(board);
+        return toResponse(board, viewerUserId);
     }
 
     public void update(Long boardId, Long userId, BoardRequestDto req) {
@@ -77,9 +83,12 @@ public class BoardService {
         }
     }
 
-    private BoardResponseDto toResponse(Board b) {
+    private BoardResponseDto toResponse(Board b, Long viewerUserId) {
         User user = userRepository.findById(b.getUserId()).orElse(null);
         String nickname = (user != null ? user.getNickname() : "USER#" + b.getUserId());
+
+        long likeCount = likeRepository.count(b.getId());
+        boolean likedByMe = viewerUserId != null && likeRepository.exists(b.getId(), viewerUserId);
 
         return new BoardResponseDto(
                 b.getId(),
@@ -88,7 +97,10 @@ public class BoardService {
                 b.getTitle(),
                 b.getContent(),
                 b.getCreatedAt(),
-                b.getModifiedAt()
+                b.getModifiedAt(),
+                likeCount,
+                likedByMe
         );
     }
+
 }
