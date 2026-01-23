@@ -46,26 +46,6 @@ button{ font-family:inherit; }
   font-size:20px;
 }
 
-.actions{
-  display:flex;
-  gap:10px;
-  align-items:center;
-}
-
-.icon-btn{
-  width:38px;
-  height:38px;
-  border-radius:12px;
-  border:1px solid var(--line);
-  background:#fff;
-  box-shadow: var(--shadow);
-  display:inline-flex;
-  align-items:center;
-  justify-content:center;
-  cursor:pointer;
-}
-.icon-btn:hover{ background:#fafafa; }
-
 .container{
   max-width: 960px;
   margin: 0 auto;
@@ -130,16 +110,6 @@ button{ font-family:inherit; }
   white-space:pre-wrap;
 }
 
-.card-footer{
-  padding:12px 16px;
-  border-top:1px solid var(--line);
-  display:flex;
-  gap:18px;
-  color:#111827;
-  font-size:13px;
-  font-weight:700;
-}
-
 .pill-btn{
   border:1px solid var(--line);
   background:#fff;
@@ -174,9 +144,7 @@ button{ font-family:inherit; }
   margin: 0 auto;
 }
 
-.form-card{
-  padding:18px;
-}
+.form-card{ padding:18px; }
 
 .form-row{
   display:flex;
@@ -223,24 +191,10 @@ input:focus, textarea:focus{
   align-items:flex-start;
 }
 .profile .avatar{ width:52px; height:52px; border-radius:18px; }
-.profile-info{
-  flex:1;
-}
-.profile-info .big{
-  font-weight:900;
-  margin:0 0 4px;
-}
-.profile-info .small{
-  margin:0 0 6px;
-  color:var(--muted);
-  font-size:13px;
-}
-.profile-info .bio{
-  margin:0;
-  font-size:13px;
-  color:#111827;
-  white-space:pre-wrap;
-}
+.profile-info{ flex:1; }
+.profile-info .big{ font-weight:900; margin:0 0 4px; }
+.profile-info .small{ margin:0 0 6px; color:var(--muted); font-size:13px; }
+.profile-info .bio{ margin:0; font-size:13px; color:#111827; white-space:pre-wrap; }
 
 .empty{
   padding:18px;
@@ -250,7 +204,7 @@ input:focus, textarea:focus{
   color:var(--muted);
 }
 
-/* ===== Auth (Instagram-like) ===== */
+/* Auth (Instagram-like) */
 .auth-body{
   min-height:100vh;
   background:#fafafa;
@@ -392,24 +346,11 @@ input:focus, textarea:focus{
   margin-top:8px;
 }
 
-/* ===== MyPage profile edit block (matches your main style) ===== */
-.profile-top{
-  display:flex;
-  align-items:flex-start;
-  justify-content:space-between;
-  gap:12px;
-}
-
-.edit-box{
-  margin-top:12px;
-  padding-top:12px;
-  border-top:1px solid #eee;
-}
-
 .user-link:hover{
   text-decoration: underline;
 }
 
+/* Header icons */
 .icon-actions{
   display:flex;
   gap:10px;
@@ -425,7 +366,9 @@ input:focus, textarea:focus{
   align-items:center;
   justify-content:center;
   cursor:pointer;
+  box-shadow: var(--shadow);
 }
+.icon-action:hover{ background:#fafafa; }
 
 .icon-action svg{
   width:20px;
@@ -437,33 +380,182 @@ input:focus, textarea:focus{
   stroke-linejoin:round;
 }
 
+/* More button (⋮) */
 .more-btn{
-  border:1px solid var(--line);
-  background:#fff;
-  border-radius:50%;
   width:28px;
   height:28px;
+  border-radius:999px;
+  border:1px solid var(--line);
+  background:#fff;
+  cursor:pointer;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  font-size:16px;
+  line-height:1;
+}
+.more-btn:hover{ background:#f3f4f6; }
+
+/* Dropdown menu (for post) */
+.card-menu{
+  display:none;
+  position:absolute;
+  right:0;
+  top:32px;
+  background:#fff;
+  border:1px solid var(--line);
+  border-radius:12px;
+  box-shadow:var(--shadow);
+  overflow:hidden;
+  z-index:20;
+  min-width:120px;
+}
+
+.card-menu .menu-item{
+  padding:10px 14px;
+  width:100%;
+  border:0;
+  background:none;
+  text-align:left;
+  font-weight:700;
+  cursor:pointer;
+}
+.card-menu .menu-item:hover{
+  background:#f3f4f6;
+}
+
+/* Main actions: heart / comment */
+.ig-actions{
+  display:flex;
+  gap:10px;
+  padding:10px 16px 12px;
+  border-top:1px solid var(--line);
+}
+
+.ig-action-btn{
+  width:34px;
+  height:34px;
+  border-radius:10px;
+  border:0;
+  background:transparent;
+  cursor:pointer;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+}
+
+.ig-action-btn:hover{
+  background:#f3f4f6;
+}
+
+.ig-action-btn svg{
+  width:20px;
+  height:20px;
+  fill:none;
+  stroke:#111;
+  stroke-width:2;
+  stroke-linecap:round;
+  stroke-linejoin:round;
+}
+
+/* Comments section */
+.comments{
+  display:none;
+  padding:0 12px 10px 12px;
+  border-top:1px solid var(--line);
+}
+
+.comment-list{
+  margin-top:8px;
+}
+
+.comment-item{
+  display:flex;
+  gap:10px;
+  padding:10px 0;
+  border-top:1px solid var(--line);
+}
+
+.comment-item:first-child{
+  border-top:none;
+}
+
+.comment-item::before{
+  content:"";
+  width:32px;
+  height:32px;
+  border-radius:50%;
+  background: linear-gradient(135deg, #ddd, #bbb);
+  flex-shrink:0;
+  margin-top:2px;
+}
+
+.comment-body{
+  flex:1;
+  display:flex;
+  flex-direction:column;
+  gap:4px;
+}
+
+.comment-top{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:10px;
+  font-size:13px;
+}
+
+.comment-top b{
+  font-weight:800;
+}
+
+.comment-content{
+  font-size:14px;
+  line-height:1.5;
+  word-break:break-word;
+}
+
+.comment-form{
+  display:flex;
+  gap:8px;
+  margin-top:10px;
+}
+
+.comment-form .input{
+  flex:1;
+}
+
+/* Comment menu */
+.comment-menu{
+  display:none;
+  position:absolute;
+  right:0;
+  top:30px;
+  background:#fff;
+  border:1px solid var(--line);
+  border-radius:12px;
+  box-shadow:var(--shadow);
+  overflow:hidden;
+  z-index:30;
+  min-width:120px;
+}
+
+.comment-menu .menu-item{
+  padding:10px 14px;
+  width:100%;
+  border:0;
+  background:none;
+  text-align:left;
+  font-weight:700;
   cursor:pointer;
 }
 
-.comments { margin-top: 10px; padding-top: 10px; border-top: 1px solid #eee; }
-.comment-item { padding: 8px 0; }
-.comment-top { display:flex; gap:8px; align-items:center; }
-.comment-content { margin-top: 4px; }
-.comment-form { display: flex; gap: 8px; margin-top: 8px; }
-.comment-form .input { flex: 1; }
-.mini-btn { margin-top: 6px; }
-
-.comment-item{
-  padding:10px 0;
-  border-bottom:1px solid #f0f0f0;
-}
-.comment-item:last-child{
-  border-bottom:none;
+.comment-menu .menu-item:hover{
+  background:#f3f4f6;
 }
 
+/* Mini buttons used in inline edit */
 .mini-btn{
-  margin-top:6px;
   border:1px solid var(--line);
   background:#fff;
   border-radius:10px;
