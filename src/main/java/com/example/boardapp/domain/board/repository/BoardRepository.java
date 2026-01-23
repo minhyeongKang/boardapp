@@ -94,7 +94,6 @@ public class BoardRepository {
         }, userId);
     }
 
-    // 게시글 단건 조회
     public Optional<Board> findById(Long boardId) {
         String sql = """
             SELECT *
@@ -110,7 +109,6 @@ public class BoardRepository {
         }, boardId);
     }
 
-    // 게시글 수정
     public int update(Board board) {
         String sql = """
             UPDATE BOARDS
@@ -118,6 +116,11 @@ public class BoardRepository {
             WHERE ID = ?
         """;
         return jdbc.update(sql, board.getTitle(), board.getContent(), board.getId());
+    }
+
+    public int deleteById(Long boardId) {
+        String sql = "DELETE FROM BOARDS WHERE ID = ?";
+        return jdbc.update(sql, boardId);
     }
 
     private Board mapBoard(java.sql.ResultSet rs) throws java.sql.SQLException {

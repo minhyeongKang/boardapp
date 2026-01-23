@@ -134,6 +134,16 @@
     }
   }
 
+  // 게시글 삭제
+  async function deleteBoard(boardId){
+    if(!confirm("게시글을 삭제할까요?")) return;
+
+    const res = await apiFetch(`/api/boards/${boardId}`, { method: "DELETE" });
+    if(!res) return;
+
+    await loadFeed();
+  }
+
   function cardHtml(p){
     const nickname = p.nickname || p.username || "USER";
     const userId = p.userId;
@@ -150,6 +160,7 @@
         <button type="button" class="more-btn" onclick="togglePostMenu(event, ${p.id})" title="더보기">⋮</button>
         <div id="menu-${p.id}" class="card-menu">
           <button type="button" class="menu-item" onclick="location.href='${editUrl}'">수정</button>
+          <button type="button" class="menu-item" style="color:#dc2626;" onclick="deleteBoard(${p.id})">삭제</button>
         </div>
       </div>
     ` : `<div style="width:28px;height:28px;"></div>`;
@@ -261,9 +272,7 @@
           <div class="comment-body">
             <div class="comment-top">
               <div style="display:flex; align-items:center; gap:8px;">
-                <a href="${profileUrl}"
-                   class="user-link"
-                   style="font-weight:800;">
+                <a href="${profileUrl}" class="user-link" style="font-weight:800;">
                   ${escapeHtml(c.nickname || "USER")}
                 </a>
                 <span class="muted">${escapeHtml(fmtDate(c.createdAt))}</span>
@@ -366,6 +375,16 @@
     await loadMyContext();
     await loadFeed();
   })();
+
+  window.togglePostMenu = togglePostMenu;
+  window.toggleCommentMenu = toggleCommentMenu;
+  window.toggleComments = toggleComments;
+  window.submitComment = submitComment;
+  window.startInlineEdit = startInlineEdit;
+  window.cancelInlineEdit = cancelInlineEdit;
+  window.saveInlineEdit = saveInlineEdit;
+  window.deleteComment = deleteComment;
+  window.deleteBoard = deleteBoard;
 </script>
 </body>
 </html>
